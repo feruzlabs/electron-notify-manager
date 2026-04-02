@@ -1,38 +1,38 @@
-function clampPercent(value: number): number {
+function clampPercent(value) {
   if (!Number.isFinite(value)) return 0;
   return Math.max(0, Math.min(100, value));
 }
 
 export class ProgressBar {
-  private animation: Animation | null = null;
+  animation = null;
 
-  public constructor(private readonly element: HTMLElement) {}
+  constructor(element) {
+    this.element = element;
+  }
 
-  public startDuration(durationMs: number): void {
+  startDuration(durationMs) {
     this.stop();
     const ms = Math.max(0, Math.floor(durationMs));
     if (ms <= 0) return;
-
-    // 100% → 0%
     this.animation = this.element.animate(
       [{ transform: 'scaleX(1)' }, { transform: 'scaleX(0)' }],
       { duration: ms, easing: 'linear', fill: 'forwards' },
     );
   }
 
-  public setProgress(percent: number): void {
+  setProgress(percent) {
     this.stop();
     const p = clampPercent(percent);
     this.element.style.transform = `scaleX(${p / 100})`;
   }
 
-  public stop(): void {
+  stop() {
     if (!this.animation) return;
     this.animation.cancel();
     this.animation = null;
   }
 
-  public complete(): void {
+  complete() {
     this.stop();
     this.element.style.transform = 'scaleX(0)';
   }

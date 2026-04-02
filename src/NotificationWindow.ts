@@ -181,6 +181,12 @@ export class NotificationWindow {
         const e = easeOutCubic(t);
         const x = start.x + dx * e;
         const y = start.y + dy * e;
+        if (!Number.isFinite(x) || !Number.isFinite(y)) {
+          if (this.animTimer) clearInterval(this.animTimer);
+          this.animTimer = null;
+          resolve();
+          return;
+        }
         this.window.setPosition(Math.round(x), Math.round(y), false);
 
         if (t >= 1) {

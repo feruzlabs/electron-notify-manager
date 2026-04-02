@@ -1,3 +1,6 @@
+import type { NotificationPosition } from './types/position.types';
+import type { NotificationVariant } from './types/theme.types';
+
 export const DEFAULTS = {
   WIDTH: 360,
   HEIGHT: 100,
@@ -15,26 +18,29 @@ export const IPC_CHANNELS = {
   NOTIFICATION_REPOSITION: 'notification:reposition',
   NOTIFICATION_READY: 'notification:ready',
   NOTIFICATION_UPDATE: 'notification:update',
+
+  // kept for compatibility with existing code paths
   NOTIFICATION_THEME: 'notification:theme',
 } as const;
 
-export const VALID_POSITIONS = [
+export const VALID_POSITIONS: NotificationPosition[] = [
   'topLeft',
   'topCenter',
   'topRight',
   'bottomLeft',
   'bottomCenter',
   'bottomRight',
-] as const;
+];
 
-export const VALID_VARIANTS = [
+export const VALID_VARIANTS: NotificationVariant[] = [
   'default',
   'success',
   'error',
   'warning',
   'loading',
   'progress',
-] as const;
+];
 
+// kept for compatibility with existing code paths
 export const VALID_THEME_MODES = ['dark', 'light', 'auto'] as const;
 

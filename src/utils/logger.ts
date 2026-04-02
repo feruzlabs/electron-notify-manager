@@ -1,16 +1,6 @@
-import type { NotificationError } from '../errors';
-
 export class Logger {
   private readonly prefix = '[electron-notify-manager]';
-  private enabled: boolean;
-
-  public constructor(debug = false) {
-    this.enabled = debug;
-  }
-
-  public setEnabled(enabled: boolean): void {
-    this.enabled = enabled;
-  }
+  public constructor(private enabled: boolean = false) {}
 
   public info(message: string, ...args: readonly unknown[]): void {
     if (!this.enabled) return;
@@ -30,10 +20,22 @@ export class Logger {
     console.debug(this.prefix, message, ...args);
   }
 
-  public error(message: string, error?: Error | NotificationError): void {
-    if (!this.enabled) return;
+  public error(message: string, error?: Error): void {
+    // error() always logs regardless of enabled flag
     // eslint-disable-next-line no-console
     console.error(this.prefix, message, error);
+  }
+
+  public enable(): void {
+    this.enabled = true;
+  }
+
+  public disable(): void {
+    this.enabled = false;
+  }
+
+  public get isEnabled(): boolean {
+    return this.enabled;
   }
 }
 

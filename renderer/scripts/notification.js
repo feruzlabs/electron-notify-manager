@@ -1,188 +1,188 @@
-/* eslint-disable */
-'use strict';
+import { ICONS } from './icons.js';
+import { ProgressBar } from './progressBar.js';
+import { AnimationController } from './animationController.js';
 
-function getParam(key, fallback = '') {
-  const sp = new URLSearchParams(window.location.search);
-  const v = sp.get(key);
-  return v == null ? fallback : v;
+function parseConfig() {
+  const params = new URLSearchParams(window.location.search);
+  const cfgRaw = params.get('config');
+  if (cfgRaw) {
+    try {
+      const parsed = JSON.parse(cfgRaw);
+      return {
+        id: String(parsed?.id ?? ''),
+        title: String(parsed?.title ?? ''),
+        description: String(parsed?.description ?? ''),
+        image: parsed?.image == null ? null : String(parsed.image),
+        duration: Number.isFinite(Number(parsed?.duration)) ? Number(parsed.duration) : 4000,
+        variant: String(parsed?.variant ?? 'default'),
+        theme: parsed?.theme === 'light' ? 'light' : 'dark',
+        progress: typeof parsed?.progress === 'number' ? parsed.progress : undefined,
+      };
+    } catch {
+      // ignore
+    }
+  }
+  return {
+    id: params.get('id') ?? '',
+    title: params.get('title') ?? '',
+    description: params.get('description') ?? '',
+    image: params.get('image'),
+    duration: Number(params.get('duration') ?? 4000),
+    variant: params.get('variant') ?? 'default',
+    theme: params.get('theme') === 'light' ? 'light' : 'dark',
+    progress: params.get('progress') ? Number(params.get('progress')) : undefined,
+  };
 }
 
-function getNumberParam(key, fallback) {
-  const raw = getParam(key, '');
-  const n = Number(raw);
-  return Number.isFinite(n) ? n : fallback;
-}
+(function () {
+  const config = parseConfig();
 
-function clampProgress(value) {
-  if (Number.isNaN(value)) return 0;
-  return Math.max(0, Math.min(100, Math.round(value)));
-}
+  const root = document.getElementById('notification');
+  const titleEl = document.getElementById('title');
+  const descEl = document.getElementById('desc');
+  const imageEl = document.getElementById('image');
+  const iconSvgEl = document.getElementById('iconSvg');
+  const closeBtn = document.getElementById('closeBtn');
+  const bottomBarFill = document.getElementById('bottomBarFill');
+  const progressInfo = document.getElementById('progressInfo');
+  const progressLabel = document.getElementById('progressLabel');
+  const progressPercent = document.getElementById('progressPercent');
 
-const ICONS = {
-  default: `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-    <path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z" stroke="currentColor" stroke-width="2"/>
-    <path d="M12 10v7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-    <path d="M12 7h.01" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
-  </svg>`,
-  success: `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-    <path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z" stroke="currentColor" stroke-width="2"/>
-    <path d="M7.5 12.5l3 3 6-7" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
-  </svg>`,
-  error: `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-    <path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z" stroke="currentColor" stroke-width="2"/>
-    <path d="M8.5 8.5l7 7M15.5 8.5l-7 7" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
-  </svg>`,
-  warning: `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-    <path d="M12 3l10 18H2L12 3z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-    <path d="M12 9v5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
-    <path d="M12 17h.01" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
-  </svg>`,
-  loading: `<svg class="spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-    <path d="M12 3a9 9 0 1 0 9 9" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
-  </svg>`,
-  progress: `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-    <path d="M4 12a8 8 0 1 0 8-8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-    <path d="M12 6v6l4 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-  </svg>`
-};
+  if (
+    !root ||
+    !titleEl ||
+    !descEl ||
+    !imageEl ||
+    !iconSvgEl ||
+    !closeBtn ||
+    !bottomBarFill ||
+    !progressInfo ||
+    !progressLabel ||
+    !progressPercent
+  ) {
+    throw new Error('Notification UI elements missing from notification.html');
+  }
 
-const id = getParam('id', '');
-const title = getParam('title', '');
-const description = getParam('description', '');
-const image = getParam('image', '');
-const duration = Math.max(0, Math.floor(getNumberParam('duration', 4000)));
-const variant = getParam('variant', 'default');
-const themeResolved = getParam('themeResolved', 'dark');
-const progress = getNumberParam('progress', 0);
-const progressLabel = getParam('progressLabel', '');
-const loadingText = getParam('loadingText', '');
+  root.dataset.variant = config.variant;
+  root.dataset.theme = config.theme;
 
-const root = document.getElementById('notification');
-const titleEl = document.getElementById('title');
-const descEl = document.getElementById('desc');
-const closeBtn = document.getElementById('closeBtn');
-const iconSvg = document.getElementById('iconSvg');
-const imgEl = document.getElementById('image');
-const bottomBar = document.getElementById('bottomBar');
-const bottomBarFill = document.getElementById('bottomBarFill');
-const progressInfo = document.getElementById('progressInfo');
-const progressLabelEl = document.getElementById('progressLabel');
-const progressPercentEl = document.getElementById('progressPercent');
+  titleEl.textContent = config.title;
+  descEl.textContent = config.description;
 
-titleEl.textContent = title;
-descEl.textContent = description;
+  if (config.image && config.image.trim().length > 0) {
+    imageEl.src = config.image;
+    imageEl.style.display = 'block';
+    iconSvgEl.style.display = 'none';
+  } else {
+    imageEl.removeAttribute('src');
+    imageEl.style.display = 'none';
+    iconSvgEl.style.display = 'grid';
+    iconSvgEl.innerHTML = ICONS[config.variant] ?? ICONS.default;
+  }
 
-root.dataset.variant = variant;
-root.dataset.theme = themeResolved;
+  const position = new URLSearchParams(window.location.search).get('position') ?? 'bottomRight';
+  const animController = new AnimationController(root, position);
+  const progressBar = new ProgressBar(bottomBarFill);
 
-const hasImage = typeof image === 'string' && image.trim().length > 0;
-if (hasImage) {
-  imgEl.src = image;
-  imgEl.style.display = 'block';
-  iconSvg.innerHTML = '';
-} else {
-  imgEl.removeAttribute('src');
-  imgEl.style.display = 'none';
-  iconSvg.innerHTML = ICONS[variant] || ICONS.default;
-}
+  let autoTimer = null;
+  const duration = Math.max(0, Math.floor(Number(config.duration)));
+  const shouldAutoClose = duration > 0 && config.variant !== 'loading' && config.variant !== 'progress';
 
-function setProgressUI(p) {
-  const pct = clampProgress(p);
-  progressLabelEl.textContent = progressLabel || '';
-  progressPercentEl.textContent = `${pct}%`;
-  bottomBarFill.style.transform = `scaleX(${pct / 100})`;
-}
-
-let closing = false;
-let autoTimer = null;
-
-function enter() {
-  requestAnimationFrame(() => {
-    root.classList.remove('entering');
-    root.classList.add('entered');
-  });
-}
-
-function requestClose() {
-  if (closing) return;
-  closing = true;
-  if (autoTimer) {
-    clearTimeout(autoTimer);
+  function clearAutoTimer() {
+    if (autoTimer == null) return;
+    window.clearTimeout(autoTimer);
     autoTimer = null;
   }
-  root.classList.remove('entered');
-  root.classList.add('exiting');
-  setTimeout(() => window.electronNotify.sendClose(id), 220);
-  root.style.pointerEvents = 'none';
-}
 
-function startBottomBar() {
-  if (variant === 'loading') {
-    bottomBar.style.display = 'none';
-    return;
+  function handleUpdate(payload) {
+    if (!payload || typeof payload !== 'object') return;
+    if (payload.id !== config.id) return;
+    const updates = payload.updates;
+    if (!updates || typeof updates !== 'object') return;
+
+    if (typeof updates.description === 'string') {
+      descEl.textContent = updates.description;
+    }
+    if (typeof updates.loadingText === 'string') {
+      descEl.textContent = updates.loadingText;
+    }
+    if (typeof updates.progress === 'number') {
+      const p = Math.max(0, Math.min(100, updates.progress));
+      root.dataset.variant = 'progress';
+      progressInfo.style.display = 'flex';
+      progressLabel.textContent = progressLabel.textContent || 'Progress';
+      progressPercent.textContent = `${Math.round(p)}%`;
+      progressBar.setProgress(p);
+    }
   }
 
-  if (variant === 'progress') {
-    progressInfo.style.display = 'flex';
-    setProgressUI(progress);
-    return;
-  }
+  animController.enter().then(() => {
+    if (config.variant === 'progress') {
+      progressInfo.style.display = 'flex';
+      progressLabel.textContent = progressLabel.textContent || 'Progress';
+      const p = typeof config.progress === 'number' ? Math.max(0, Math.min(100, config.progress)) : 0;
+      progressPercent.textContent = `${Math.round(p)}%`;
+      progressBar.setProgress(p);
+      return;
+    }
 
-  if (duration <= 0) {
-    bottomBar.style.display = 'none';
-    return;
-  }
-
-  bottomBar.style.display = 'block';
-  bottomBarFill.style.transform = 'scaleX(1)';
-  bottomBarFill.animate([{ transform: 'scaleX(1)' }, { transform: 'scaleX(0)' }], {
-    duration,
-    easing: 'linear',
-    fill: 'forwards'
+    if (shouldAutoClose) {
+      progressBar.startDuration(duration);
+      autoTimer = window.setTimeout(() => {
+        animController.exit().then(() => {
+          if (window.electronAPI?.notifyClose) window.electronAPI.notifyClose(config.id, 'duration');
+          else window.electronNotify?.sendClose?.(config.id);
+        });
+      }, duration);
+    } else {
+      progressBar.complete();
+    }
   });
-  autoTimer = setTimeout(() => requestClose(), duration);
-}
 
-closeBtn.addEventListener('click', (e) => {
-  e.preventDefault();
-  e.stopPropagation();
-  requestClose();
-});
-
-root.addEventListener('click', () => {
-  if (closing) return;
-  window.electronNotify.sendClick(id);
-  requestClose();
-});
-
-root.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' || e.key === ' ') {
-    e.preventDefault();
-    root.click();
-  } else if (e.key === 'Escape') {
-    e.preventDefault();
-    requestClose();
+  if (window.electronAPI?.onReposition) {
+    window.electronAPI.onReposition((y) => animController.reposition(y));
+  } else if (window.electronNotify?.onReposition) {
+    window.electronNotify.onReposition((payload) => {
+      if (payload && payload.id === config.id) animController.reposition(payload.y);
+    });
   }
-});
 
-window.electronNotify.onReposition((_payload) => {
-  root.animate([{ transform: 'translateY(-2px)' }, { transform: 'translateY(0px)' }], {
-    duration: 240,
-    easing: 'ease-out'
+  if (window.electronAPI?.onUpdate) {
+    window.electronAPI.onUpdate(handleUpdate);
+  } else if (window.electronNotify?.onUpdate) {
+    window.electronNotify.onUpdate(handleUpdate);
+  }
+
+  if (window.electronAPI?.onForceClose) {
+    window.electronAPI.onForceClose(() => {
+      clearAutoTimer();
+      animController.exit().then(() => {
+        if (window.electronAPI?.notifyClose) window.electronAPI.notifyClose(config.id, 'programmatic');
+        else window.electronNotify?.sendClose?.(config.id);
+      });
+    });
+  }
+
+  if (window.electronNotify?.onTheme) {
+    window.electronNotify.onTheme((payload) => {
+      if (payload && (payload.theme === 'dark' || payload.theme === 'light')) root.dataset.theme = payload.theme;
+    });
+  }
+
+  closeBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    clearAutoTimer();
+    animController.exit().then(() => {
+      if (window.electronAPI?.notifyClose) window.electronAPI.notifyClose(config.id, 'user');
+      else window.electronNotify?.sendClose?.(config.id);
+    });
   });
-});
 
-window.electronNotify.onUpdate((payload) => {
-  if (payload.id !== id) return;
-  if (typeof payload.updates.description === 'string') descEl.textContent = payload.updates.description;
-  if (typeof payload.updates.loadingText === 'string') descEl.textContent = payload.updates.loadingText;
-  if (typeof payload.updates.progress === 'number') setProgressUI(payload.updates.progress);
-});
-
-window.electronNotify.onTheme((payload) => {
-  root.dataset.theme = payload.theme;
-});
-
-enter();
-startBottomBar();
+  root.addEventListener('click', () => {
+    clearAutoTimer();
+    if (window.electronAPI?.notifyClick) window.electronAPI.notifyClick(config.id);
+    else window.electronNotify?.sendClick?.(config.id);
+  });
+})();
 

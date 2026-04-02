@@ -1,28 +1,106 @@
+/* Variant-specific entrance animations */
+.notification[data-variant="success"] {
+  animation: bounceIn 0.4s ease;
+}
+.notification[data-variant="error"] {
+  animation: shakeIn 0.4s ease;
+}
+.notification[data-variant="warning"] .icon-area {
+  animation: pulse 2s infinite;
+}
+.notification[data-variant="loading"] .icon-svg svg {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes bounceIn {
+  0% {
+    transform: scale(0.8);
+  }
+  70% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes shakeIn {
+  0% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-4px);
+  }
+  75% {
+    transform: translateX(4px);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
-@keyframes success-bounce {
-  0% { transform: translateX(var(--enter-x, 22px)) scale(0.8); }
-  60% { transform: translateX(0px) scale(1.05); }
-  100% { transform: translateX(0px) scale(1); }
+@keyframes slideInRight {
+  from {
+    transform: translateX(120%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
 }
-
-@keyframes error-shake {
-  0% { transform: translateX(var(--enter-x, 22px)); }
-  40% { transform: translateX(-4px); }
-  70% { transform: translateX(4px); }
-  100% { transform: translateX(0px); }
+@keyframes slideInLeft {
+  from {
+    transform: translateX(-120%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
 }
-
-@keyframes warning-pulse {
-  0%, 100% { filter: saturate(100%); }
-  50% { filter: saturate(170%); }
+@keyframes slideInTop {
+  from {
+    transform: translateY(-120%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+@keyframes slideOutRight {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(120%);
+    opacity: 0;
+  }
 }
 
 .spin {
-  animation: spin 900ms linear infinite;
+  animation: spin 1s linear infinite;
   transform-origin: 50% 50%;
 }
 

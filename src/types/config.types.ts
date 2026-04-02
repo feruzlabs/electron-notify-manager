@@ -1,4 +1,5 @@
 import type { NotificationPosition } from './position.types';
+import type { ThemeMode } from './theme.types';
 
 export interface NotificationManagerOptions {
   position?: NotificationPosition;
@@ -6,7 +7,12 @@ export interface NotificationManagerOptions {
   height?: number;
   margin?: number;
   gap?: number;
-  debug?: boolean;
+  theme?: ThemeMode;
   maxVisible?: number;
+
+  // kept for compatibility with existing code paths
+  debug?: boolean;
 }
+
+export type ResolvedManagerOptions = Required<NotificationManagerOptions>;
 

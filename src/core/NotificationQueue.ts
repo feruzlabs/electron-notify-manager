@@ -28,6 +28,10 @@ export class NotificationQueue {
     return this.getAll().slice(0, this.maxVisible);
   }
 
+  public getPending(): NotificationItem[] {
+    return this.getAll().slice(this.maxVisible);
+  }
+
   public has(id: string): boolean {
     return this.queue.has(id);
   }
@@ -38,6 +42,10 @@ export class NotificationQueue {
 
   public get size(): number {
     return this.queue.size;
+  }
+
+  public get visibleCount(): number {
+    return Math.min(this.size, this.maxVisible);
   }
 }
 

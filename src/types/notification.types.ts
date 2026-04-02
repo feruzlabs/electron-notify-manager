@@ -1,5 +1,7 @@
 import type { BrowserWindow } from 'electron';
-import type { NotificationVariant, ThemeMode } from './theme.types';
+import type { NotificationUpdatePayload, NotificationVariant, ThemeMode } from './theme.types';
+
+export type { NotificationUpdatePayload } from './theme.types';
 
 export interface NotificationOptions {
   title: string;
@@ -9,7 +11,7 @@ export interface NotificationOptions {
   variant?: NotificationVariant;
   theme?: ThemeMode;
 
-  // progress variant only
+  // progress variant only (optional extra fields used by renderer are allowed)
   progress?: number; // 0-100
   progressLabel?: string;
 
@@ -24,14 +26,9 @@ export type CloseReason = 'duration' | 'user' | 'programmatic' | 'app-quit';
 
 export interface NotificationItem {
   id: string;
-  window: BrowserWindow;
+  // null means pending (queued but not yet shown)
+  window: BrowserWindow | null;
   options: NotificationOptions;
   timer: NodeJS.Timeout | null;
-}
-
-export interface NotificationUpdatePayload {
-  progress?: number;
-  loadingText?: string;
-  description?: string;
 }
 

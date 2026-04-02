@@ -21,9 +21,9 @@ let mainWindow: BrowserWindow | null = null;
 let notifier: NotificationManager | null = null;
 
 const shownIds: string[] = [];
+const notifiersByPosition = new Map<NotificationPosition, NotificationManager>();
 
 function createNotifier(position: NotificationPosition = 'bottomRight'): NotificationManager {
-  notifier?.destroy();
   const n = new NotificationManager({
     position,
     width: 360,
@@ -35,6 +35,14 @@ function createNotifier(position: NotificationPosition = 'bottomRight'): Notific
   n.on('show', (id: string) => {
     shownIds.unshift(id);
     log('shown', `id: ${id.slice(0, 8)}`);
+  });
+
+  n.on('shown', (id: string) => {
+    log('updated', `window shown id: ${id.slice(0, 8)}`);
+  });
+
+  n.on('hidden', (id: string, reason: CloseReason) => {
+    log('updated', `window hidden id: ${id.slice(0, 8)} reason: ${reason}`);
   });
 
   n.on('close', (id: string, reason: CloseReason) => {
@@ -49,6 +57,14 @@ function createNotifier(position: NotificationPosition = 'bottomRight'): Notific
 
   n.on('error', (err: Error) => {
     log('error', err.message);
+  });
+
+  // Extra logs for reflow/reposition debugging
+  n.on('reposition', (id: string, x: number, y: number) => {
+    log('updated', `reposition id: ${id.slice(0, 8)} x: ${Math.round(x)} y: ${Math.round(y)}`);
+  });
+  n.on('reflow:done', (displayId: number, count: number) => {
+    log('updated', `reflow done display: ${displayId} count: ${count}`);
   });
 
   return n;
@@ -82,8 +98,14 @@ function log(type: LogType, message: string): void {
 }
 
 function showAtPosition(position: NotificationPosition): void {
-  notifier = createNotifier(position);
-  notifier.show({
+  let n = notifiersByPosition.get(position) ?? null;
+  if (!n) {
+    n = createNotifier(position);
+    notifiersByPosition.set(position, n);
+  }
+  // keep the "main" notifier as the last used one for other actions
+  notifier = n;
+  n.show({
     title: `Position: ${position}`,
     description: 'This notification uses a new manager instance for position demo.',
     variant: 'default',
@@ -358,6 +380,7 @@ app
   .whenReady()
   .then(() => {
     notifier = createNotifier('bottomRight');
+    notifiersByPosition.set('bottomRight', notifier);
     createWindow();
     registerActions();
     log('shown', 'Demo ready');
@@ -369,7 +392,7 @@ app
   });
 
 app.on('before-quit', () => {
-  notifier?.destroy();
+  for (const n of notifiersByPosition.values()) n.destroy();
   notifier = null;
 });
 

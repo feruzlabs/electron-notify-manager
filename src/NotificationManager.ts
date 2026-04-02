@@ -27,9 +27,12 @@ export class NotificationManager extends EventEmitter {
   private readonly notifications: Map<string, NotificationItem>;
   private readonly windows: Map<string, NotificationWindow>;
   private readonly order: string[];
+  private readonly displayById: Map<string, number>;
+  private readonly reflowDoneTimers: Map<number, NodeJS.Timeout>;
 
-  private readonly onIpcCloseBound: (event: IpcMainEvent, id: unknown) => void;
+  private readonly onIpcCloseBound: (event: IpcMainEvent, id: unknown, reason?: unknown) => void;
   private readonly onIpcClickBound: (event: IpcMainEvent, id: unknown) => void;
+  private readonly onNativeThemeUpdatedBound: () => void;
 
   public constructor(options: NotificationManagerOptions = {}) {
     super();
@@ -46,16 +49,19 @@ export class NotificationManager extends EventEmitter {
     this.notifications = new Map<string, NotificationItem>();
     this.windows = new Map<string, NotificationWindow>();
     this.order = [];
+    this.displayById = new Map<string, number>();
+    this.reflowDoneTimers = new Map<number, NodeJS.Timeout>();
 
     this.onIpcCloseBound = this.onRendererClose.bind(this);
     this.onIpcClickBound = this.onRendererClick.bind(this);
+    this.onNativeThemeUpdatedBound = () => {
+      this.broadcastThemeIfAuto();
+    };
 
     ipcMain.on(IPC_CHANNELS.NOTIFICATION_CLOSE, this.onIpcCloseBound);
     ipcMain.on(IPC_CHANNELS.NOTIFICATION_CLICK, this.onIpcClickBound);
 
-    nativeTheme.on('updated', () => {
-      this.broadcastThemeIfAuto();
-    });
+    nativeTheme.on('updated', this.onNativeThemeUpdatedBound);
   }
 
   /**
@@ -78,8 +84,12 @@ export class NotificationManager extends EventEmitter {
 
     // Insert as top-most.
     this.order.unshift(id);
+    // Save display id up-front so we don't depend on bounds while animating from offscreen.
+    this.displayById.set(id, display.id);
 
     // Compute provisional coords at the top (index 0) before creating the window.
+    // NOTE: `idsOnDisplay()` already includes this id because we set `displayById` above.
+    // So `count` should be exactly `idsOnDisplay().length`, not `+1`.
     const coords = calculateCoordsInWorkArea({
       workArea,
       position: this.options.position,
@@ -88,7 +98,7 @@ export class NotificationManager extends EventEmitter {
       margin: this.options.margin,
       gap: this.options.gap,
       indexTopToBottom: 0,
-      count: this.idsOnDisplay(display.id).length + 1
+      count: this.idsOnDisplay(display.id).length
     });
 
     const win = new NotificationWindow(
@@ -120,6 +130,7 @@ export class NotificationManager extends EventEmitter {
   public close(id: string): void {
     const item = this.notifications.get(id);
     if (!item) return;
+    if (!item.window) return;
     this.closeById(id, item.window, 'programmatic');
   }
 
@@ -142,9 +153,20 @@ export class NotificationManager extends EventEmitter {
   public dispose(reason: CloseReason = 'programmatic'): void {
     ipcMain.off(IPC_CHANNELS.NOTIFICATION_CLOSE, this.onIpcCloseBound);
     ipcMain.off(IPC_CHANNELS.NOTIFICATION_CLICK, this.onIpcClickBound);
+    nativeTheme.off('updated', this.onNativeThemeUpdatedBound);
+    for (const t of this.reflowDoneTimers.values()) clearTimeout(t);
+    this.reflowDoneTimers.clear();
     for (const id of Array.from(this.notifications.keys())) {
       const item = this.notifications.get(id);
       if (!item) continue;
+      if (!item.window) {
+        // pending item (no window created) - just remove bookkeeping
+        this.notifications.delete(id);
+        this.displayById.delete(id);
+        const idx = this.order.indexOf(id);
+        if (idx >= 0) this.order.splice(idx, 1);
+        continue;
+      }
       this.closeById(id, item.window, reason);
     }
   }
@@ -155,6 +177,7 @@ export class NotificationManager extends EventEmitter {
   public update(id: string, payload: NotificationUpdatePayload): void {
     const item = this.notifications.get(id);
     if (!item) return;
+    if (!item.window) return;
 
     const next: NotificationUpdatePayload = {
       description: payload.description,
@@ -177,19 +200,25 @@ export class NotificationManager extends EventEmitter {
     }
   }
 
-  private onRendererClose(event: IpcMainEvent, id: unknown): void {
+  private onRendererClose(event: IpcMainEvent, id: unknown, reason?: unknown): void {
     const notifId = String(id);
     const item = this.notifications.get(notifId);
     if (!item) return;
+    if (!item.window) return;
 
     if (item.window.webContents.id !== event.sender.id) return;
-    this.closeById(notifId, item.window, 'user');
+    const r: CloseReason =
+      reason === 'duration' || reason === 'user' || reason === 'programmatic' || reason === 'app-quit'
+        ? reason
+        : 'user';
+    this.closeById(notifId, item.window, r);
   }
 
   private onRendererClick(event: IpcMainEvent, id: unknown): void {
     const notifId = String(id);
     const item = this.notifications.get(notifId);
     if (!item) return;
+    if (!item.window) return;
     if (item.window.webContents.id !== event.sender.id) return;
 
     try {
@@ -206,12 +235,15 @@ export class NotificationManager extends EventEmitter {
     const item = this.notifications.get(id);
     if (!item) return;
 
+    this.emit('hidden', id, reason);
+
     if (item.timer) {
       clearTimeout(item.timer);
       item.timer = null;
     }
 
     this.notifications.delete(id);
+    this.displayById.delete(id);
     const idx = this.order.indexOf(id);
     if (idx >= 0) this.order.splice(idx, 1);
 
@@ -226,16 +258,13 @@ export class NotificationManager extends EventEmitter {
     }
 
     this.emit('close', id, reason);
-    const displayId = this.getDisplayIdForWindow(window) ?? this.getTargetDisplay().id;
+    const displayId = this.displayById.get(id) ?? this.getDisplayIdForWindow(window) ?? this.getTargetDisplay().id;
     this.reflowForDisplay(displayId, { animate: true });
   }
 
   private idsOnDisplay(displayId: number): string[] {
     return this.order.filter((id) => {
-      const win = this.notifications.get(id)?.window;
-      if (!win) return false;
-      const d = screen.getDisplayMatching(win.getBounds());
-      return d.id === displayId;
+      return this.displayById.get(id) === displayId;
     });
   }
 
@@ -264,6 +293,9 @@ export class NotificationManager extends EventEmitter {
         count
       });
 
+      // Emit reposition event so the host app can log it.
+      this.emit('reposition', id, coords.x, coords.y);
+
       // Requested IPC contract (renderer might animate something, but main moves the window).
       try {
         wrapper.window.webContents.send(IPC_CHANNELS.NOTIFICATION_REPOSITION, { id, y: coords.y });
@@ -273,12 +305,31 @@ export class NotificationManager extends EventEmitter {
 
       const entranceFrom: 'left' | 'right' = this.options.position.endsWith('Left') ? 'left' : 'right';
 
+      // On Windows, transparent always-on-top windows can sporadically become hidden
+      // after rapid show/reflow cycles. Ensure they stay visible during reflow.
+      try {
+        if (!wrapper.window.isVisible()) wrapper.window.showInactive();
+      } catch {
+        // ignore
+      }
+
       if (args.showingId === id) {
-        void wrapper.showAt(coords, entranceFrom);
+        void wrapper.showAt(coords, entranceFrom).then(() => {
+          this.emit('shown', id);
+        });
       } else {
         wrapper.moveTo(coords, args.animate, 300);
       }
     }
+
+    // Debounced "reflow done" event (fires when repositioning stops).
+    const existing = this.reflowDoneTimers.get(display.id);
+    if (existing) clearTimeout(existing);
+    const timer = setTimeout(() => {
+      this.reflowDoneTimers.delete(display.id);
+      this.emit('reflow:done', display.id, count);
+    }, DEFAULTS.REPOSITION_DURATION + 60);
+    this.reflowDoneTimers.set(display.id, timer);
   }
 
   private getTargetDisplay(): Display {
@@ -302,6 +353,7 @@ export class NotificationManager extends EventEmitter {
 
   private broadcastThemeIfAuto(): void {
     for (const item of this.notifications.values()) {
+      if (!item.window) continue;
       const requested = item.options.theme ?? 'auto';
       if (requested !== 'auto') continue;
       const theme = resolveTheme('auto');

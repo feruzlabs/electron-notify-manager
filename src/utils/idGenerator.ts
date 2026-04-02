@@ -1,13 +1,10 @@
-import crypto from 'crypto';
+import { randomUUID } from 'crypto';
 
-export interface IdGenerator {
-  next(): string;
+export function generateId(): string {
+  return randomUUID();
 }
 
-export class CryptoIdGenerator implements IdGenerator {
-  public next(): string {
-    if (typeof crypto.randomUUID === 'function') return crypto.randomUUID();
-    return crypto.randomBytes(16).toString('hex');
-  }
+export function generateShortId(): string {
+  return randomUUID().slice(0, 8);
 }
 

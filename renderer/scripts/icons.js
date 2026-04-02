@@ -1,12 +1,4 @@
-export type NotificationVariant =
-  | 'default'
-  | 'success'
-  | 'error'
-  | 'warning'
-  | 'loading'
-  | 'progress';
-
-export const ICONS: Record<NotificationVariant, string> = {
+export const ICONS = {
   default: `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
   <path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z" stroke="currentColor" stroke-width="2"/>
   <path d="M12 10v7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>

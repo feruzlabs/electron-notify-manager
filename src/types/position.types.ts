@@ -18,3 +18,12 @@ export interface WorkArea {
   height: number;
 }
 
+export interface PositionConfig {
+  width: number;
+  height: number;
+  margin: number;
+  gap: number;
+  screenWidth: number;
+  screenHeight: number;
+}
+

@@ -6,6 +6,7 @@ const IPC_CHANNELS = {
   NOTIFICATION_REPOSITION: 'notification:reposition',
   NOTIFICATION_UPDATE: 'notification:update',
   NOTIFICATION_THEME: 'notification:theme',
+  NOTIFICATION_FORCE_CLOSE: 'notification:force-close',
 } as const;
 
 export interface RendererApi {
@@ -14,6 +15,14 @@ export interface RendererApi {
   onReposition: (handler: (payload: { id: string; y: number }) => void) => void;
   onUpdate: (handler: (payload: { id: string; updates: { progress?: number; loadingText?: string; description?: string } }) => void) => void;
   onTheme: (handler: (payload: { theme: 'dark' | 'light' }) => void) => void;
+}
+
+export interface ElectronApi {
+  notifyClose: (id: string, reason: 'duration' | 'user' | 'programmatic' | 'app-quit') => void;
+  notifyClick: (id: string) => void;
+  onReposition: (handler: (y: number) => void) => void;
+  onUpdate: (handler: (payload: { id: string; updates: { progress?: number; loadingText?: string; description?: string } }) => void) => void;
+  onForceClose: (handler: () => void) => void;
 }
 
 const api: RendererApi = {
@@ -53,4 +62,20 @@ const api: RendererApi = {
 };
 
 contextBridge.exposeInMainWorld('electronNotify', api);
+
+const electronAPI: ElectronApi = {
+  notifyClose: (id, reason) => ipcRenderer.send(IPC_CHANNELS.NOTIFICATION_CLOSE, id, reason),
+  notifyClick: (id) => ipcRenderer.send(IPC_CHANNELS.NOTIFICATION_CLICK, id),
+  onReposition: (handler) => {
+    api.onReposition((payload) => handler(payload.y));
+  },
+  onUpdate: (handler) => {
+    api.onUpdate(handler);
+  },
+  onForceClose: (handler) => {
+    ipcRenderer.on(IPC_CHANNELS.NOTIFICATION_FORCE_CLOSE, () => handler());
+  },
+};
+
+contextBridge.exposeInMainWorld('electronAPI', electronAPI);
 
