@@ -7,124 +7,368 @@
     <style>
       :root {
         color-scheme: dark;
+        --bg-primary: #0f0f17;
+        --bg-secondary: #1a1a2e;
+        --bg-card: rgba(255, 255, 255, 0.04);
+        --border: rgba(255, 255, 255, 0.08);
+        --text-primary: #ffffff;
+        --text-secondary: rgba(255, 255, 255, 0.5);
+        --accent: #4f8ef7;
       }
+
+      * {
+        box-sizing: border-box;
+      }
+
       html,
       body {
         margin: 0;
         height: 100%;
-        background: radial-gradient(1200px 600px at 30% 20%, rgba(79, 142, 247, 0.25), transparent 55%),
-          radial-gradient(900px 500px at 70% 70%, rgba(182, 84, 255, 0.18), transparent 55%),
-          #0b0e14;
-        color: rgba(255, 255, 255, 0.92);
+        background: radial-gradient(1200px 600px at 20% 15%, rgba(79, 142, 247, 0.22), transparent 55%),
+          radial-gradient(900px 500px at 75% 70%, rgba(182, 84, 255, 0.14), transparent 55%),
+          var(--bg-primary);
+        color: var(--text-primary);
         font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
       }
-      .wrap {
-        max-width: 900px;
-        margin: 0 auto;
-        padding: 28px 22px;
+
+      .layout {
+        display: grid;
+        grid-template-columns: 220px 1fr;
+        min-height: 100vh;
       }
-      h1 {
-        font-size: 20px;
-        margin: 0 0 12px;
+
+      .sidebar {
+        position: sticky;
+        top: 0;
+        height: 100vh;
+        padding: 16px;
+        border-right: 1px solid var(--border);
+        background: color-mix(in srgb, var(--bg-primary), white 2%);
+      }
+
+      .brand {
+        font-weight: 800;
         letter-spacing: 0.2px;
+        margin: 6px 0 14px;
       }
-      p {
-        margin: 0 0 18px;
-        color: rgba(255, 255, 255, 0.7);
+
+      .brand small {
+        display: block;
+        font-weight: 600;
+        color: var(--text-secondary);
+        margin-top: 6px;
       }
-      .card {
-        background: rgba(255, 255, 255, 0.04);
-        border: 1px solid rgba(255, 255, 255, 0.08);
+
+      .sidebar-item {
+        padding: 10px 12px;
+        cursor: pointer;
+        border-radius: 10px;
+        color: rgba(255, 255, 255, 0.78);
+        border: 1px solid transparent;
+        transition: background 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms ease;
+        user-select: none;
+      }
+
+      .sidebar-item:hover {
+        background: rgba(255, 255, 255, 0.05);
+        transform: translateY(-1px);
+      }
+
+      .sidebar-item.active {
+        background: var(--bg-card);
+        border-color: var(--border);
+        color: var(--accent);
+      }
+
+      .main {
+        padding: 22px 22px 60px;
+      }
+
+      .header {
+        max-width: 980px;
+        margin: 0 auto 16px;
+      }
+
+      .header h1 {
+        font-size: 22px;
+        margin: 0;
+      }
+
+      .header p {
+        margin: 8px 0 0;
+        color: var(--text-secondary);
+      }
+
+      .content {
+        max-width: 980px;
+        margin: 0 auto;
+      }
+
+      .section-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
         border-radius: 14px;
         padding: 18px;
+        margin-bottom: 14px;
         box-shadow: 0 18px 55px rgba(0, 0, 0, 0.35);
         backdrop-filter: blur(12px) saturate(140%);
         -webkit-backdrop-filter: blur(12px) saturate(140%);
       }
+
+      .section-title {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 12px;
+      }
+
+      .section-title h2 {
+        font-size: 14px;
+        margin: 0;
+        letter-spacing: 0.25px;
+      }
+
+      .section-title span {
+        font-size: 12px;
+        color: var(--text-secondary);
+      }
+
       .row {
         display: flex;
-        gap: 12px;
+        gap: 10px;
         flex-wrap: wrap;
       }
-      button {
-        appearance: none;
-        border: 1px solid rgba(255, 255, 255, 0.14);
-        background: rgba(255, 255, 255, 0.06);
-        color: rgba(255, 255, 255, 0.92);
-        padding: 10px 12px;
-        border-radius: 12px;
+
+      .btn-default {
+        --btn-color: #4f8ef7;
+      }
+      .btn-success {
+        --btn-color: #22c55e;
+      }
+      .btn-error {
+        --btn-color: #ef4444;
+      }
+      .btn-warning {
+        --btn-color: #f59e0b;
+      }
+      .btn-loading {
+        --btn-color: #a78bfa;
+      }
+      .btn-progress {
+        --btn-color: #06b6d4;
+      }
+
+      .btn {
+        background: rgba(from var(--btn-color) r g b / 0.15);
+        border: 1px solid rgba(from var(--btn-color) r g b / 0.3);
+        color: var(--btn-color);
+        padding: 8px 14px;
+        border-radius: 10px;
         cursor: pointer;
-        transition: transform 120ms ease, background 120ms ease, border-color 120ms ease;
-        font-weight: 600;
+        transition: all 0.2s;
+        font-weight: 700;
+        letter-spacing: 0.1px;
       }
-      button:hover {
+
+      .btn:hover {
+        background: rgba(from var(--btn-color) r g b / 0.25);
         transform: translateY(-1px);
-        background: rgba(255, 255, 255, 0.09);
-        border-color: rgba(79, 142, 247, 0.45);
       }
-      .log {
-        margin-top: 16px;
-        padding: 12px;
-        border-radius: 12px;
-        border: 1px solid rgba(255, 255, 255, 0.08);
+
+      .btn:active {
+        transform: translateY(0px);
+        opacity: 0.95;
+      }
+
+      .position-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+      }
+
+      .log-wrap {
+        margin-top: 12px;
+        border-radius: 14px;
+        border: 1px solid var(--border);
         background: rgba(0, 0, 0, 0.25);
-        color: rgba(255, 255, 255, 0.75);
+        overflow: hidden;
+      }
+
+      .log-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--border);
+        color: rgba(255, 255, 255, 0.7);
+        font-size: 12px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      }
+
+      .log-entries {
+        padding: 10px 12px;
+        max-height: 240px;
+        overflow: auto;
+      }
+
+      .log-entry {
         font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
         font-size: 12px;
-        line-height: 1.5;
-        height: 160px;
-        overflow: auto;
-        white-space: pre-wrap;
+        padding: 4px 6px;
+        display: grid;
+        grid-template-columns: 92px 18px 1fr;
+        gap: 8px;
+        border-radius: 10px;
+      }
+
+      .log-entry:hover {
+        background: rgba(255, 255, 255, 0.04);
+      }
+
+      .log-time {
+        color: rgba(255, 255, 255, 0.45);
+      }
+      .log-icon {
+        opacity: 0.95;
+      }
+
+      .log-shown {
+        color: #22c55e;
+      }
+      .log-closed {
+        color: rgba(255, 255, 255, 0.4);
+      }
+      .log-updated {
+        color: #4f8ef7;
+      }
+      .log-click {
+        color: #f59e0b;
+      }
+      .log-error {
+        color: #ef4444;
       }
     </style>
   </head>
   <body>
-    <div class="wrap">
-      <h1>electron-notify-manager demo</h1>
-      <p>Test the package behavior with the buttons below.</p>
-
-      <div class="card">
-        <div class="row">
-          <button id="btn-show">Show notification</button>
-          <button id="btn-sticky">Show sticky</button>
-          <button id="btn-image">With Image</button>
-          <button id="btn-close-all">Close all</button>
+    <div class="layout">
+      <aside class="sidebar">
+        <div class="brand">
+          electron-notify-manager
+          <small>Interactive demo</small>
         </div>
-        <div class="log" id="log"></div>
-      </div>
+
+        <div class="sidebar-item active" data-nav="sec-variants">Variants</div>
+        <div class="sidebar-item" data-nav="sec-themes">Themes</div>
+        <div class="sidebar-item" data-nav="sec-positions">Positions</div>
+        <div class="sidebar-item" data-nav="sec-stacking">Stacking</div>
+        <div class="sidebar-item" data-nav="sec-special">Special</div>
+        <div class="sidebar-item" data-nav="sec-controls">Controls</div>
+      </aside>
+
+      <main class="main">
+        <div class="header">
+          <h1>Notification demo dashboard</h1>
+          <p>All actions are triggered via a single IPC channel + live log stream.</p>
+        </div>
+
+        <div class="content">
+          <section class="section-card" id="sec-variants" data-section>
+            <div class="section-title">
+              <h2>Variants</h2>
+              <span>6 variants</span>
+            </div>
+            <div class="row">
+              <button class="btn btn-default" data-action="show-default">Default</button>
+              <button class="btn btn-success" data-action="show-success">Success</button>
+              <button class="btn btn-error" data-action="show-error">Error</button>
+              <button class="btn btn-warning" data-action="show-warning">Warning</button>
+              <button class="btn btn-loading" data-action="show-loading">Loading</button>
+              <button class="btn btn-progress" data-action="show-progress">Progress</button>
+            </div>
+          </section>
+
+          <section class="section-card" id="sec-themes" data-section>
+            <div class="section-title">
+              <h2>Themes</h2>
+              <span>dark / light / auto</span>
+            </div>
+            <div class="row">
+              <button class="btn btn-success" data-action="theme-dark">Force dark</button>
+              <button class="btn btn-success" data-action="theme-light">Force light</button>
+              <button class="btn btn-default" data-action="theme-auto">Auto (system)</button>
+              <button class="btn btn-progress" data-action="theme-both">Show both</button>
+            </div>
+          </section>
+
+          <section class="section-card" id="sec-positions" data-section>
+            <div class="section-title">
+              <h2>Positions</h2>
+              <span>6 positions</span>
+            </div>
+            <div class="position-grid">
+              <button class="btn btn-default" data-action="pos-topLeft">topLeft</button>
+              <button class="btn btn-default" data-action="pos-topCenter">topCenter</button>
+              <button class="btn btn-default" data-action="pos-topRight">topRight</button>
+              <button class="btn btn-default" data-action="pos-bottomLeft">bottomLeft</button>
+              <button class="btn btn-default" data-action="pos-bottomCenter">bottomCenter</button>
+              <button class="btn btn-default" data-action="pos-bottomRight">bottomRight</button>
+            </div>
+          </section>
+
+          <section class="section-card" id="sec-stacking" data-section>
+            <div class="section-title">
+              <h2>Stacking</h2>
+              <span>stress tests</span>
+            </div>
+            <div class="row">
+              <button class="btn btn-default" data-action="stack-3">Stack 3</button>
+              <button class="btn btn-default" data-action="stack-5">Stack 5</button>
+              <button class="btn btn-default" data-action="stack-mixed">Mixed</button>
+              <button class="btn btn-warning" data-action="stack-rapid">Rapid x10</button>
+            </div>
+          </section>
+
+          <section class="section-card" id="sec-special" data-section>
+            <div class="section-title">
+              <h2>Special</h2>
+              <span>edge cases</span>
+            </div>
+            <div class="row">
+              <button class="btn btn-loading" data-action="loading-to-success">Loading → Success</button>
+              <button class="btn btn-progress" data-action="progress-demo">Progress demo</button>
+              <button class="btn btn-default" data-action="long-content">Long content</button>
+              <button class="btn btn-default" data-action="no-image">No image</button>
+              <button class="btn btn-default" data-action="with-image">With image</button>
+              <button class="btn btn-default" data-action="sticky">Sticky</button>
+              <button class="btn btn-warning" data-action="short-duration">Short duration</button>
+              <button class="btn btn-warning" data-action="long-duration">Long duration</button>
+            </div>
+          </section>
+
+          <section class="section-card" id="sec-controls" data-section>
+            <div class="section-title">
+              <h2>Controls</h2>
+              <span>manage active notifications</span>
+            </div>
+            <div class="row">
+              <button class="btn btn-error" data-action="close-all">Close all</button>
+              <button class="btn btn-warning" data-action="close-last">Close last</button>
+            </div>
+
+            <div class="log-wrap">
+              <div class="log-header">
+                <div>Live event log</div>
+                <div>Newest on top · max 50</div>
+              </div>
+              <div class="log-entries" id="logEntries"></div>
+            </div>
+          </section>
+        </div>
+      </main>
     </div>
 
-    <script>
-      const { ipcRenderer } = require('electron');
-      const logEl = document.getElementById('log');
-
-      function log(msg) {
-        const line = `[${new Date().toLocaleTimeString()}] ${msg}\n`;
-        logEl.textContent = line + logEl.textContent;
-      }
-
-      document.getElementById('btn-show').addEventListener('click', async () => {
-        const id = await ipcRenderer.invoke('demo-show');
-        log(`Show notification -> id=${id}`);
-      });
-
-      document.getElementById('btn-sticky').addEventListener('click', async () => {
-        const id = await ipcRenderer.invoke('demo-show-sticky');
-        log(`Show sticky -> id=${id}`);
-      });
-
-      document.getElementById('btn-image').addEventListener('click', async () => {
-        const id = await ipcRenderer.invoke('demo-show-image');
-        log(`Show with image -> id=${id}`);
-      });
-
-      document.getElementById('btn-close-all').addEventListener('click', async () => {
-        await ipcRenderer.invoke('demo-close-all');
-        log('Close all');
-      });
-
-      ipcRenderer.on('demo-log', (_evt, msg) => log(msg));
-    </script>
+    <script type="module" src="./dist/renderer.js"></script>
   </body>
 </html>
 

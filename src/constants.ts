@@ -14,6 +14,8 @@ export const IPC_CHANNELS = {
   NOTIFICATION_CLICK: 'notification:click',
   NOTIFICATION_REPOSITION: 'notification:reposition',
   NOTIFICATION_READY: 'notification:ready',
+  NOTIFICATION_UPDATE: 'notification:update',
+  NOTIFICATION_THEME: 'notification:theme',
 } as const;
 
 export const VALID_POSITIONS = [
@@ -24,4 +26,15 @@ export const VALID_POSITIONS = [
   'bottomCenter',
   'bottomRight',
 ] as const;
+
+export const VALID_VARIANTS = [
+  'default',
+  'success',
+  'error',
+  'warning',
+  'loading',
+  'progress',
+] as const;
+
+export const VALID_THEME_MODES = ['dark', 'light', 'auto'] as const;
 

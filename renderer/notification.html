@@ -4,36 +4,49 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Notification</title>
-    <link rel="stylesheet" href="./notification.css" />
+    <link rel="stylesheet" href="./styles/themes.css" />
+    <link rel="stylesheet" href="./styles/animations.css" />
+    <link rel="stylesheet" href="./styles/notification.css" />
   </head>
   <body>
-    <div id="root" class="root entering" role="button" tabindex="0" aria-label="Notification">
-      <div class="image" id="imageWrap" aria-hidden="true">
-        <img id="image" alt="" />
-        <div id="defaultIcon" class="defaultIcon" aria-hidden="true">
-          <svg viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect width="44" height="44" rx="10" fill="#4f8ef7" />
-            <path
-              d="M22 10c-1.1 0-2 .9-2 2v1.29C17.16 14.18 15 16.84 15 20v5l-2 2v1h18v-1l-2-2v-5c0-3.16-2.16-5.82-5-6.71V12c0-1.1-.9-2-2-2zm0 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2z"
-              fill="white"
-            />
-          </svg>
-        </div>
+    <div
+      id="notification"
+      class="notification entering"
+      data-variant="default"
+      data-theme="dark"
+      role="button"
+      tabindex="0"
+      aria-label="Notification"
+    >
+      <div class="icon-area" id="iconArea" aria-hidden="true">
+        <img id="image" class="icon-image" alt="" />
+        <div id="iconSvg" class="icon-svg"></div>
       </div>
 
       <div class="content">
         <div class="title" id="title"></div>
-        <div class="desc" id="desc"></div>
+        <div class="description" id="desc"></div>
+        <div class="progress-info" id="progressInfo">
+          <span class="progress-label" id="progressLabel"></span>
+          <span class="progress-percent" id="progressPercent"></span>
+        </div>
       </div>
 
-      <button class="close" id="closeBtn" aria-label="Close">×</button>
+      <button class="close-btn" id="closeBtn" aria-label="Close">
+        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+          <path
+            d="M18.3 5.71a1 1 0 0 0-1.41 0L12 10.59 7.11 5.7A1 1 0 0 0 5.7 7.11L10.59 12 5.7 16.89a1 1 0 1 0 1.41 1.41L12 13.41l4.89 4.89a1 1 0 0 0 1.41-1.41L13.41 12l4.89-4.89a1 1 0 0 0 0-1.4z"
+            fill="currentColor"
+          />
+        </svg>
+      </button>
 
-      <div class="progressWrap" aria-hidden="true">
-        <div class="progress" id="progress"></div>
+      <div class="bottom-bar" id="bottomBar" aria-hidden="true">
+        <div class="bottom-bar-fill" id="bottomBarFill"></div>
       </div>
     </div>
 
-    <script src="./notification.js"></script>
+    <script src="./scripts/notification.js"></script>
   </body>
 </html>
 

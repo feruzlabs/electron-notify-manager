@@ -1,0 +1,186 @@
+:root {
+  --radius: 12px;
+  --shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  background: transparent;
+  overflow: hidden;
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+}
+
+.notification {
+  width: 100%;
+  height: 100%;
+  border-radius: var(--radius);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  box-shadow: 0 0 0 1px var(--border), var(--shadow);
+  backdrop-filter: blur(18px) saturate(180%);
+  -webkit-backdrop-filter: blur(18px) saturate(180%);
+
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  position: relative;
+
+  opacity: 0;
+  transform: translateX(22px);
+  transition: opacity 180ms ease, transform 260ms ease;
+}
+
+.notification.entered {
+  opacity: 1;
+  transform: translateX(0px);
+}
+
+.notification.exiting {
+  opacity: 0;
+  transform: translateX(22px);
+  transition: opacity 160ms ease, transform 220ms ease;
+}
+
+/* Variant-specific entrance effects */
+.notification.entered[data-variant="success"] {
+  animation: success-bounce 360ms ease-out;
+}
+.notification.entered[data-variant="error"] {
+  animation: error-shake 360ms ease-out;
+}
+.notification.entered[data-variant="warning"] .icon-area {
+  animation: warning-pulse 900ms ease-in-out infinite;
+}
+
+.icon-area {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  overflow: hidden;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--border), transparent 30%);
+  background: color-mix(in srgb, var(--accent), transparent 88%);
+}
+
+.icon-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: none;
+}
+
+.icon-svg {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+}
+
+.icon-svg svg {
+  width: 26px;
+  height: 26px;
+  color: var(--accent);
+}
+
+.content {
+  min-width: 0;
+  flex: 1 1 auto;
+  padding-right: 26px;
+}
+
+.title {
+  color: var(--title-color);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.2;
+  margin-bottom: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.description {
+  color: var(--desc-color);
+  font-size: 12px;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.progress-info {
+  display: none;
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--desc-color);
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.progress-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.progress-percent { color: var(--title-color); font-weight: 700; }
+
+.close-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--border), transparent 40%);
+  background: color-mix(in srgb, var(--bg), white 6%);
+  color: color-mix(in srgb, var(--title-color), transparent 35%);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease, transform 120ms ease;
+  padding: 0;
+}
+
+.close-btn:hover {
+  background: rgba(255, 80, 80, 0.12);
+  border-color: rgba(255, 80, 80, 0.35);
+  color: rgba(255, 160, 160, 0.95);
+  transform: translateY(-1px);
+}
+
+.bottom-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: color-mix(in srgb, var(--border), transparent 70%);
+  border-bottom-left-radius: var(--radius);
+  border-bottom-right-radius: var(--radius);
+  overflow: hidden;
+}
+
+.bottom-bar-fill {
+  height: 100%;
+  width: 100%;
+  background: var(--accent);
+  transform-origin: left center;
+  transform: scaleX(1);
+}
+
+/* Variant behavior */
+[data-variant="loading"] .bottom-bar { display: none; }
+[data-variant="progress"] .progress-info { display: flex; }
+
+@media (prefers-reduced-motion: reduce) {
+  .notification,
+  .notification.exiting {
+    transition: none;
+    animation: none;
+  }
+}
+

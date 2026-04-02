@@ -1,9 +1,11 @@
 import crypto from 'crypto';
 import { EventEmitter } from 'events';
-import { ipcMain, screen } from 'electron';
+import { ipcMain, nativeTheme, screen } from 'electron';
 import type { IpcMainEvent, Display, BrowserWindow } from 'electron';
 import { NotificationWindow } from './NotificationWindow';
 import { calculateCoordsInWorkArea } from './positionCalculator';
+import { DEFAULTS, IPC_CHANNELS } from './constants';
+import { resolveTheme } from './utils/themeDetector';
 import type {
   CloseReason,
   NotificationItem,
@@ -12,6 +14,8 @@ import type {
   NotificationPosition,
   RequiredManagerOptions
 } from './types';
+import type { NotificationUpdatePayload } from './types/notification.types';
+import { validateNotificationOptions } from './utils/validators';
 
 interface ReflowArgs {
   animate: boolean;
@@ -31,10 +35,10 @@ export class NotificationManager extends EventEmitter {
     super();
     this.options = {
       position: (options.position ?? 'bottomRight') as NotificationPosition,
-      width: typeof options.width === 'number' ? options.width : 360,
-      height: typeof options.height === 'number' ? options.height : 100,
-      margin: typeof options.margin === 'number' ? options.margin : 16,
-      gap: typeof options.gap === 'number' ? options.gap : 10,
+      width: typeof options.width === 'number' ? options.width : DEFAULTS.WIDTH,
+      height: typeof options.height === 'number' ? options.height : DEFAULTS.HEIGHT,
+      margin: typeof options.margin === 'number' ? options.margin : DEFAULTS.MARGIN,
+      gap: typeof options.gap === 'number' ? options.gap : DEFAULTS.GAP,
       debug: typeof options.debug === 'boolean' ? options.debug : false,
       maxVisible: typeof options.maxVisible === 'number' ? options.maxVisible : 5
     };
@@ -46,24 +50,28 @@ export class NotificationManager extends EventEmitter {
     this.onIpcCloseBound = this.onRendererClose.bind(this);
     this.onIpcClickBound = this.onRendererClick.bind(this);
 
-    ipcMain.on('notification-close', this.onIpcCloseBound);
-    ipcMain.on('notification-click', this.onIpcClickBound);
+    ipcMain.on(IPC_CHANNELS.NOTIFICATION_CLOSE, this.onIpcCloseBound);
+    ipcMain.on(IPC_CHANNELS.NOTIFICATION_CLICK, this.onIpcClickBound);
+
+    nativeTheme.on('updated', () => {
+      this.broadcastThemeIfAuto();
+    });
   }
 
   /**
    * Show a notification window and return its unique ID.
    */
   public show(options: NotificationOptions): string {
-    if (typeof options !== 'object' || options === null) {
-      throw new TypeError('show(options) requires { title: string, description: string, ... }');
-    }
-    if (typeof options.title !== 'string' || typeof options.description !== 'string') {
-      throw new TypeError('show(options) requires { title: string, description: string, ... }');
-    }
+    validateNotificationOptions(options);
 
     const id = this.newId();
+    const variant = options.variant ?? 'default';
     const duration =
-      typeof options.duration === 'number' ? Math.max(0, Math.floor(options.duration)) : 4000;
+      variant === 'loading'
+        ? 0
+        : typeof options.duration === 'number'
+          ? Math.max(0, Math.floor(options.duration))
+          : DEFAULTS.DURATION;
 
     const display = this.getTargetDisplay();
     const workArea = display.workArea;
@@ -85,7 +93,7 @@ export class NotificationManager extends EventEmitter {
 
     const win = new NotificationWindow(
       id,
-      { ...options, duration },
+      { ...options, duration, variant },
       coords,
       this.options
     );
@@ -95,7 +103,7 @@ export class NotificationManager extends EventEmitter {
     const item: NotificationItem = {
       id,
       window: win.window,
-      options: { ...options, duration },
+      options: { ...options, duration, variant },
       timer: null
     };
     this.notifications.set(id, item);
@@ -132,12 +140,40 @@ export class NotificationManager extends EventEmitter {
   }
 
   public dispose(reason: CloseReason = 'programmatic'): void {
-    ipcMain.off('notification-close', this.onIpcCloseBound);
-    ipcMain.off('notification-click', this.onIpcClickBound);
+    ipcMain.off(IPC_CHANNELS.NOTIFICATION_CLOSE, this.onIpcCloseBound);
+    ipcMain.off(IPC_CHANNELS.NOTIFICATION_CLICK, this.onIpcClickBound);
     for (const id of Array.from(this.notifications.keys())) {
       const item = this.notifications.get(id);
       if (!item) continue;
       this.closeById(id, item.window, reason);
+    }
+  }
+
+  /**
+   * Update an existing notification (loading/progress/description).
+   */
+  public update(id: string, updates: Partial<NotificationUpdatePayload>): void {
+    const item = this.notifications.get(id);
+    if (!item) return;
+
+    const next: NotificationUpdatePayload = {
+      description: updates.description,
+      loadingText: updates.loadingText,
+      progress: updates.progress,
+    };
+
+    if (typeof next.description === 'string') item.options.description = next.description;
+    if (typeof next.loadingText === 'string') item.options.loadingText = next.loadingText;
+    if (typeof next.progress === 'number') item.options.progress = next.progress;
+
+    try {
+      item.window.webContents.send(IPC_CHANNELS.NOTIFICATION_UPDATE, { id, updates: next });
+    } catch {
+      // ignore
+    }
+
+    if (item.options.variant === 'progress' && typeof next.progress === 'number' && next.progress >= 100) {
+      setTimeout(() => this.close(id), 500);
     }
   }
 
@@ -230,7 +266,7 @@ export class NotificationManager extends EventEmitter {
 
       // Requested IPC contract (renderer might animate something, but main moves the window).
       try {
-        wrapper.window.webContents.send('notification-reposition', { id, y: coords.y });
+        wrapper.window.webContents.send(IPC_CHANNELS.NOTIFICATION_REPOSITION, { id, y: coords.y });
       } catch {
         // ignore
       }
@@ -262,6 +298,19 @@ export class NotificationManager extends EventEmitter {
   private newId(): string {
     if (typeof crypto.randomUUID === 'function') return crypto.randomUUID();
     return crypto.randomBytes(16).toString('hex');
+  }
+
+  private broadcastThemeIfAuto(): void {
+    for (const item of this.notifications.values()) {
+      const requested = item.options.theme ?? 'auto';
+      if (requested !== 'auto') continue;
+      const theme = resolveTheme('auto');
+      try {
+        item.window.webContents.send(IPC_CHANNELS.NOTIFICATION_THEME, { theme });
+      } catch {
+        // ignore
+      }
+    }
   }
 }
 

@@ -1,6 +1,8 @@
 import path from 'path';
 import { BrowserWindow } from 'electron';
 import type { NotificationOptions, PositionCoords, RequiredManagerOptions } from './types';
+import { DEFAULTS, IPC_CHANNELS } from './constants';
+import { resolveTheme } from './utils/themeDetector';
 
 function easeOutCubic(t: number): number {
   return 1 - Math.pow(1 - t, 3);
@@ -66,8 +68,24 @@ export class NotificationWindow {
     this.window.setAlwaysOnTop(true, 'screen-saver');
 
     const htmlPath = path.join(packageRoot, 'renderer', 'notification.html');
-    const duration = typeof options.duration === 'number' ? options.duration : 4000;
+    const variant = options.variant ?? 'default';
+    const requestedTheme = options.theme ?? 'auto';
+    const resolvedTheme = resolveTheme(requestedTheme);
+
+    const duration =
+      variant === 'loading'
+        ? 0
+        : typeof options.duration === 'number'
+          ? options.duration
+          : DEFAULTS.DURATION;
     const image = typeof options.image === 'string' && options.image.trim().length > 0 ? options.image : null;
+    const progress = typeof options.progress === 'number' ? options.progress : null;
+    const progressLabel =
+      typeof options.progressLabel === 'string' && options.progressLabel.trim().length > 0
+        ? options.progressLabel
+        : null;
+    const loadingText =
+      typeof options.loadingText === 'string' && options.loadingText.trim().length > 0 ? options.loadingText : null;
 
     const url =
       `file://${htmlPath}?` +
@@ -76,9 +94,25 @@ export class NotificationWindow {
       `&description=${encodeParam(options.description)}` +
       `&duration=${encodeParam(String(duration))}` +
       `&position=${encodeParam(managerOptions.position)}` +
-      (image ? `&image=${encodeParam(image)}` : '');
+      `&variant=${encodeParam(variant)}` +
+      `&theme=${encodeParam(requestedTheme)}` +
+      `&themeResolved=${encodeParam(resolvedTheme)}` +
+      (image ? `&image=${encodeParam(image)}` : '') +
+      (progress !== null ? `&progress=${encodeParam(String(progress))}` : '') +
+      (progressLabel ? `&progressLabel=${encodeParam(progressLabel)}` : '') +
+      (loadingText ? `&loadingText=${encodeParam(loadingText)}` : '');
 
     void this.window.loadURL(url);
+
+    // Keep window theme in sync when system theme changes (auto mode only).
+    this.window.webContents.once('did-finish-load', () => {
+      if (requestedTheme !== 'auto') return;
+      try {
+        this.window.webContents.send(IPC_CHANNELS.NOTIFICATION_THEME, { theme: resolveTheme('auto') });
+      } catch {
+        // ignore
+      }
+    });
   }
 
   public isDestroyed(): boolean {

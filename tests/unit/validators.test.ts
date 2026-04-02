@@ -1,5 +1,11 @@
 import { NotificationError } from '../../src/errors';
-import { isValidPosition, validateManagerOptions, validateNotificationOptions } from '../../src/utils/validators';
+import {
+  isValidPosition,
+  isValidThemeMode,
+  isValidVariant,
+  validateManagerOptions,
+  validateNotificationOptions,
+} from '../../src/utils/validators';
 
 describe('validators', () => {
   describe('validateManagerOptions', () => {
@@ -115,6 +121,58 @@ describe('validators', () => {
       expect(isValidPosition(null)).toBe(false);
       expect(isValidPosition(undefined)).toBe(false);
       expect(isValidPosition(123)).toBe(false);
+    });
+
+    it('should validate variants', () => {
+      expect(isValidVariant('default')).toBe(true);
+      expect(isValidVariant('success')).toBe(true);
+      expect(isValidVariant('error')).toBe(true);
+      expect(isValidVariant('warning')).toBe(true);
+      expect(isValidVariant('loading')).toBe(true);
+      expect(isValidVariant('progress')).toBe(true);
+      expect(isValidVariant('nope')).toBe(false);
+    });
+
+    it('should validate theme modes', () => {
+      expect(isValidThemeMode('dark')).toBe(true);
+      expect(isValidThemeMode('light')).toBe(true);
+      expect(isValidThemeMode('auto')).toBe(true);
+      expect(isValidThemeMode('nope')).toBe(false);
+    });
+
+    it('should throw on invalid variant/theme', () => {
+      expect(() =>
+        validateNotificationOptions({
+          title: 't',
+          description: 'd',
+          variant: 'bad' as unknown as string,
+        }),
+      ).toThrow(NotificationError);
+
+      expect(() =>
+        validateNotificationOptions({
+          title: 't',
+          description: 'd',
+          theme: 'bad' as unknown as string,
+        }),
+      ).toThrow(NotificationError);
+    });
+
+    it('should throw on progress out of bounds', () => {
+      expect(() =>
+        validateNotificationOptions({
+          title: 't',
+          description: 'd',
+          progress: 101,
+        }),
+      ).toThrow(NotificationError);
+      expect(() =>
+        validateNotificationOptions({
+          title: 't',
+          description: 'd',
+          progress: -1,
+        }),
+      ).toThrow(NotificationError);
     });
 
     it('should throw if manager options is not an object', () => {
