@@ -63,8 +63,8 @@ function createNotifier(position: NotificationPosition = 'bottomRight'): Notific
   n.on('reposition', (id: string, x: number, y: number) => {
     log('updated', `reposition id: ${id.slice(0, 8)} x: ${Math.round(x)} y: ${Math.round(y)}`);
   });
-  n.on('reflow:done', (displayId: number, count: number) => {
-    log('updated', `reflow done display: ${displayId} count: ${count}`);
+  n.on('reflow:done', (count: number) => {
+    log('updated', `reflow done count: ${count}`);
   });
 
   return n;
