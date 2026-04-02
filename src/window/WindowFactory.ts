@@ -79,8 +79,26 @@ export class WindowFactory implements IWindowFactory {
 
       void bw.loadURL(`file://${htmlPath}?${params.toString()}`);
 
+      let showTimer: NodeJS.Timeout | null = null;
+
       bw.once('ready-to-show', () => {
+        if (showTimer) {
+          clearTimeout(showTimer);
+          showTimer = null;
+        }
         if (!bw.isDestroyed()) bw.showInactive();
+      });
+
+      showTimer = setTimeout(() => {
+        showTimer = null;
+        if (!bw.isDestroyed() && !bw.isVisible()) bw.showInactive();
+      }, 2000);
+
+      bw.once('closed', () => {
+        if (showTimer) {
+          clearTimeout(showTimer);
+          showTimer = null;
+        }
       });
 
       return new NotificationWindow(id, bw);

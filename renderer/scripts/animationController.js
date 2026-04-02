@@ -84,8 +84,8 @@ export class AnimationController {
 
   reposition(newY) {
     if (!Number.isFinite(newY)) return;
+    this.root.style.transition = 'top 300ms cubic-bezier(0.2, 0.9, 0.2, 1)';
     this.root.style.top = `${Math.floor(newY)}px`;
-    this.root.style.transition = 'top 300ms ease';
   }
 }
 

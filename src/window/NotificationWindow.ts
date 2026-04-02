@@ -15,10 +15,25 @@ export interface INotificationWindow {
 }
 
 export class NotificationWindow implements INotificationWindow {
+  private readonly readyPromise: Promise<void>;
+
   public constructor(
     public readonly id: string,
     public readonly browserWindow: BrowserWindow,
-  ) {}
+  ) {
+    this.readyPromise = new Promise<void>((resolve) => {
+      if (browserWindow.isDestroyed()) {
+        resolve();
+        return;
+      }
+      browserWindow.once('ready-to-show', () => resolve());
+    });
+  }
+
+  public async sendWhenReady(channel: string, payload: unknown): Promise<void> {
+    await this.readyPromise;
+    this.send(channel, payload);
+  }
 
   public sendReposition(y: number): void {
     if (this.browserWindow.isDestroyed()) return;

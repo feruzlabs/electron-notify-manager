@@ -65,6 +65,14 @@ function parseConfig(): IpcNotificationConfig {
 (function main() {
   const config = parseConfig();
 
+  // eslint-disable-next-line no-console
+  console.log('[renderer] config:', {
+    id: config.id ? config.id.slice(0, 8) : '',
+    duration: config.duration,
+    variant: config.variant,
+    theme: config.theme,
+  });
+
   const root = document.getElementById('notification');
   const titleEl = document.getElementById('title');
   const descEl = document.getElementById('desc');
@@ -122,6 +130,14 @@ function parseConfig(): IpcNotificationConfig {
   const shouldAutoClose =
     config.duration > 0 && config.variant !== 'loading' && config.variant !== 'progress';
 
+  // IPC setup MUST be registered before enter() to avoid losing early messages.
+  window.electronAPI.onReposition((y) => animController.reposition(y));
+  window.electronAPI.onUpdate((payload) => handleUpdate(payload));
+  window.electronAPI.onForceClose(() => {
+    clearAutoTimer();
+    void animController.exit().then(() => window.electronAPI.notifyClose(config.id, 'programmatic'));
+  });
+
   void animController.enter().then(() => {
     if (shouldAutoClose) {
       progressBar.startDuration(config.duration);
@@ -159,13 +175,6 @@ function parseConfig(): IpcNotificationConfig {
       progressBar.setProgress(p);
     }
   }
-
-  window.electronAPI.onReposition((y) => animController.reposition(y));
-  window.electronAPI.onUpdate((payload) => handleUpdate(payload));
-  window.electronAPI.onForceClose(() => {
-    clearAutoTimer();
-    void animController.exit().then(() => window.electronAPI.notifyClose(config.id, 'programmatic'));
-  });
 
   closeBtn.addEventListener('click', (e) => {
     e.preventDefault();

@@ -36,6 +36,12 @@ function parseConfig() {
 
 (function () {
   const config = parseConfig();
+  console.log('[renderer] config:', {
+    id: config.id ? config.id.slice(0, 8) : '',
+    duration: config.duration,
+    variant: config.variant,
+    theme: config.theme,
+  });
 
   const root = document.getElementById('notification');
   const titleEl = document.getElementById('title');
@@ -116,29 +122,7 @@ function parseConfig() {
     }
   }
 
-  animController.enter().then(() => {
-    if (config.variant === 'progress') {
-      progressInfo.style.display = 'flex';
-      progressLabel.textContent = progressLabel.textContent || 'Progress';
-      const p = typeof config.progress === 'number' ? Math.max(0, Math.min(100, config.progress)) : 0;
-      progressPercent.textContent = `${Math.round(p)}%`;
-      progressBar.setProgress(p);
-      return;
-    }
-
-    if (shouldAutoClose) {
-      progressBar.startDuration(duration);
-      autoTimer = window.setTimeout(() => {
-        animController.exit().then(() => {
-          if (window.electronAPI?.notifyClose) window.electronAPI.notifyClose(config.id, 'duration');
-          else window.electronNotify?.sendClose?.(config.id);
-        });
-      }, duration);
-    } else {
-      progressBar.complete();
-    }
-  });
-
+  // IPC setup MUST be registered before enter() to avoid losing early messages.
   if (window.electronAPI?.onReposition) {
     window.electronAPI.onReposition((y) => animController.reposition(y));
   } else if (window.electronNotify?.onReposition) {
@@ -162,6 +146,29 @@ function parseConfig() {
       });
     });
   }
+
+  animController.enter().then(() => {
+    if (config.variant === 'progress') {
+      progressInfo.style.display = 'flex';
+      progressLabel.textContent = progressLabel.textContent || 'Progress';
+      const p = typeof config.progress === 'number' ? Math.max(0, Math.min(100, config.progress)) : 0;
+      progressPercent.textContent = `${Math.round(p)}%`;
+      progressBar.setProgress(p);
+      return;
+    }
+
+    if (shouldAutoClose) {
+      progressBar.startDuration(duration);
+      autoTimer = window.setTimeout(() => {
+        animController.exit().then(() => {
+          if (window.electronAPI?.notifyClose) window.electronAPI.notifyClose(config.id, 'duration');
+          else window.electronNotify?.sendClose?.(config.id);
+        });
+      }, duration);
+    } else {
+      progressBar.complete();
+    }
+  });
 
   if (window.electronNotify?.onTheme) {
     window.electronNotify.onTheme((payload) => {
