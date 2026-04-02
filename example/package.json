@@ -1,0 +1,17 @@
+{
+  "name": "electron-notify-manager-example",
+  "private": true,
+  "version": "1.0.0",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "npm run build && electron ."
+  },
+  "dependencies": {
+    "electron-notify-manager": "file:.."
+  },
+  "devDependencies": {
+    "electron": "^29.4.6"
+  }
+}
+

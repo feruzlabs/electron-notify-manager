@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Notification</title>
+    <link rel="stylesheet" href="./notification.css" />
+  </head>
+  <body>
+    <div id="root" class="root entering" role="button" tabindex="0" aria-label="Notification">
+      <div class="image" id="imageWrap" aria-hidden="true">
+        <img id="image" alt="" />
+        <div id="defaultIcon" class="defaultIcon" aria-hidden="true">
+          <svg viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="44" height="44" rx="10" fill="#4f8ef7" />
+            <path
+              d="M22 10c-1.1 0-2 .9-2 2v1.29C17.16 14.18 15 16.84 15 20v5l-2 2v1h18v-1l-2-2v-5c0-3.16-2.16-5.82-5-6.71V12c0-1.1-.9-2-2-2zm0 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2z"
+              fill="white"
+            />
+          </svg>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="title" id="title"></div>
+        <div class="desc" id="desc"></div>
+      </div>
+
+      <button class="close" id="closeBtn" aria-label="Close">×</button>
+
+      <div class="progressWrap" aria-hidden="true">
+        <div class="progress" id="progress"></div>
+      </div>
+    </div>
+
+    <script src="./notification.js"></script>
+  </body>
+</html>
+
