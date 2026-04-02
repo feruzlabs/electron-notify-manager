@@ -152,14 +152,14 @@ export class NotificationManager extends EventEmitter {
   /**
    * Update an existing notification (loading/progress/description).
    */
-  public update(id: string, updates: Partial<NotificationUpdatePayload>): void {
+  public update(id: string, payload: NotificationUpdatePayload): void {
     const item = this.notifications.get(id);
     if (!item) return;
 
     const next: NotificationUpdatePayload = {
-      description: updates.description,
-      loadingText: updates.loadingText,
-      progress: updates.progress,
+      description: payload.description,
+      loadingText: payload.loadingText,
+      progress: payload.progress,
     };
 
     if (typeof next.description === 'string') item.options.description = next.description;

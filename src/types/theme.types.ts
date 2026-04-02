@@ -1,3 +1,5 @@
+export type ThemeMode = 'dark' | 'light' | 'auto';
+
 export type NotificationVariant =
   | 'default'
   | 'success'
@@ -6,5 +8,9 @@ export type NotificationVariant =
   | 'loading'
   | 'progress';
 
-export type ThemeMode = 'dark' | 'light' | 'auto';
+export interface NotificationUpdatePayload {
+  progress?: number;
+  loadingText?: string;
+  description?: string;
+}
 
