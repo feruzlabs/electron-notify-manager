@@ -22,11 +22,18 @@ interface ReflowArgs {
   showingId?: string;
 }
 
+interface PendingNotification {
+  id: string;
+  options: NotificationOptions;
+  displayId: number;
+}
+
 export class NotificationManager extends EventEmitter {
   private readonly options: RequiredManagerOptions;
   private readonly notifications: Map<string, NotificationItem>;
   private readonly windows: Map<string, NotificationWindow>;
   private readonly order: string[];
+  private readonly pending: Map<string, PendingNotification>;
 
   private readonly onIpcCloseBound: (event: IpcMainEvent, id: unknown) => void;
   private readonly onIpcClickBound: (event: IpcMainEvent, id: unknown) => void;
@@ -46,6 +53,7 @@ export class NotificationManager extends EventEmitter {
     this.notifications = new Map<string, NotificationItem>();
     this.windows = new Map<string, NotificationWindow>();
     this.order = [];
+    this.pending = new Map<string, PendingNotification>();
 
     this.onIpcCloseBound = this.onRendererClose.bind(this);
     this.onIpcClickBound = this.onRendererClick.bind(this);
@@ -73,44 +81,14 @@ export class NotificationManager extends EventEmitter {
           ? Math.max(0, Math.floor(options.duration))
           : DEFAULTS.DURATION;
 
-    const display = this.getTargetDisplay();
-    const workArea = display.workArea;
-
     // Insert as top-most.
     this.order.unshift(id);
 
-    // Compute provisional coords at the top (index 0) before creating the window.
-    const coords = calculateCoordsInWorkArea({
-      workArea,
-      position: this.options.position,
-      width: this.options.width,
-      height: this.options.height,
-      margin: this.options.margin,
-      gap: this.options.gap,
-      indexTopToBottom: 0,
-      count: this.idsOnDisplay(display.id).length + 1
-    });
+    const display = this.getTargetDisplay();
+    const normalized: NotificationOptions = { ...options, duration, variant };
 
-    const win = new NotificationWindow(
-      id,
-      { ...options, duration, variant },
-      coords,
-      this.options
-    );
-
-    this.windows.set(id, win);
-
-    const item: NotificationItem = {
-      id,
-      window: win.window,
-      options: { ...options, duration, variant },
-      timer: null
-    };
-    this.notifications.set(id, item);
-
-    this.reflowForDisplay(display.id, { animate: true, showingId: id });
-
-    this.emit('show', id);
+    this.pending.set(id, { id, options: normalized, displayId: display.id });
+    this.pump(display.id);
     return id;
   }
 
@@ -118,6 +96,21 @@ export class NotificationManager extends EventEmitter {
    * Manually close a notification by ID.
    */
   public close(id: string): void {
+    const pending = this.pending.get(id);
+    if (pending) {
+      this.pending.delete(id);
+      const idx = this.order.indexOf(id);
+      if (idx >= 0) this.order.splice(idx, 1);
+      try {
+        pending.options.onClose?.();
+      } catch {
+        // ignore
+      }
+      this.emit('close', id, 'programmatic');
+      this.pump(pending.displayId);
+      return;
+    }
+
     const item = this.notifications.get(id);
     if (!item) return;
     this.closeById(id, item.window, 'programmatic');
@@ -127,6 +120,9 @@ export class NotificationManager extends EventEmitter {
    * Close all active notifications.
    */
   public closeAll(): void {
+    for (const id of Array.from(this.pending.keys())) {
+      this.close(id);
+    }
     for (const id of Array.from(this.notifications.keys())) {
       this.close(id);
     }
@@ -142,6 +138,19 @@ export class NotificationManager extends EventEmitter {
   public dispose(reason: CloseReason = 'programmatic'): void {
     ipcMain.off(IPC_CHANNELS.NOTIFICATION_CLOSE, this.onIpcCloseBound);
     ipcMain.off(IPC_CHANNELS.NOTIFICATION_CLICK, this.onIpcClickBound);
+    for (const id of Array.from(this.pending.keys())) {
+      const pending = this.pending.get(id);
+      if (!pending) continue;
+      this.pending.delete(id);
+      const idx = this.order.indexOf(id);
+      if (idx >= 0) this.order.splice(idx, 1);
+      try {
+        pending.options.onClose?.();
+      } catch {
+        // ignore
+      }
+      this.emit('close', id, reason);
+    }
     for (const id of Array.from(this.notifications.keys())) {
       const item = this.notifications.get(id);
       if (!item) continue;
@@ -227,11 +236,13 @@ export class NotificationManager extends EventEmitter {
 
     this.emit('close', id, reason);
     const displayId = this.getDisplayIdForWindow(window) ?? this.getTargetDisplay().id;
-    this.reflowForDisplay(displayId, { animate: true });
+    this.pump(displayId);
   }
 
   private idsOnDisplay(displayId: number): string[] {
     return this.order.filter((id) => {
+      const pending = this.pending.get(id);
+      if (pending) return pending.displayId === displayId;
       const win = this.notifications.get(id)?.window;
       if (!win) return false;
       const d = screen.getDisplayMatching(win.getBounds());
@@ -243,7 +254,7 @@ export class NotificationManager extends EventEmitter {
     const display = screen.getAllDisplays().find((d) => d.id === displayId) ?? this.getTargetDisplay();
     const workArea = display.workArea;
 
-    const ids = this.idsOnDisplay(display.id);
+    const ids = this.idsOnDisplay(display.id).filter((id) => this.notifications.has(id));
     const count = ids.length;
 
     for (let index = 0; index < count; index++) {
@@ -278,6 +289,57 @@ export class NotificationManager extends EventEmitter {
       } else {
         wrapper.moveTo(coords, args.animate, 300);
       }
+    }
+  }
+
+  private pump(displayId: number): void {
+    const ids = this.idsOnDisplay(displayId);
+    const visibleTarget = Math.max(0, Math.floor(this.options.maxVisible));
+    const shouldBeVisible = ids.slice(0, visibleTarget);
+    const newlyCreated: string[] = [];
+    let showingId: string | undefined;
+
+    for (let index = 0; index < shouldBeVisible.length; index++) {
+      const id = shouldBeVisible[index];
+      if (this.notifications.has(id)) continue;
+      const pending = this.pending.get(id);
+      if (!pending) continue;
+
+      const display = screen.getAllDisplays().find((d) => d.id === pending.displayId) ?? this.getTargetDisplay();
+      const workArea = display.workArea;
+      const coords = calculateCoordsInWorkArea({
+        workArea,
+        position: this.options.position,
+        width: this.options.width,
+        height: this.options.height,
+        margin: this.options.margin,
+        gap: this.options.gap,
+        indexTopToBottom: index,
+        count: shouldBeVisible.length
+      });
+
+      const win = new NotificationWindow(id, pending.options, coords, this.options);
+      this.windows.set(id, win);
+
+      const item: NotificationItem = {
+        id,
+        window: win.window,
+        options: pending.options,
+        timer: null
+      };
+      this.notifications.set(id, item);
+      this.pending.delete(id);
+      newlyCreated.push(id);
+      if (!showingId) showingId = id;
+    }
+
+    this.reflowForDisplay(displayId, {
+      animate: true,
+      showingId
+    });
+
+    for (const id of newlyCreated) {
+      this.emit('show', id);
     }
   }
 
