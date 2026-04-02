@@ -17,40 +17,43 @@ export interface IpcHandlers {
 
 export class IpcBridge implements IIpcBridge {
   private registered = false;
-  private readonly registeredChannels: string[] = [];
+  private readonly boundHandlers: Array<{ channel: string; handler: (...args: unknown[]) => void }> = [];
 
   public register(handlers: IpcHandlers): void {
     if (this.registered) {
       throw new IpcRegistrationError('IPC bridge already registered', ErrorCode.INVALID_OPTIONS);
     }
 
-    ipcMain.on(IPC_CHANNELS.NOTIFICATION_CLOSE, (_evt, id: unknown, reason: unknown) => {
+    const closeHandler = (_evt: unknown, id: unknown, reason: unknown): void => {
       if (typeof id !== 'string') return;
       if (reason !== 'duration' && reason !== 'user' && reason !== 'programmatic' && reason !== 'app-quit') return;
       handlers.onClose(id, reason);
-    });
-    this.registeredChannels.push(IPC_CHANNELS.NOTIFICATION_CLOSE);
+    };
+    ipcMain.on(IPC_CHANNELS.NOTIFICATION_CLOSE, closeHandler);
+    this.boundHandlers.push({ channel: IPC_CHANNELS.NOTIFICATION_CLOSE, handler: closeHandler });
 
-    ipcMain.on(IPC_CHANNELS.NOTIFICATION_CLICK, (_evt, id: unknown) => {
+    const clickHandler = (_evt: unknown, id: unknown): void => {
       if (typeof id !== 'string') return;
       handlers.onClick(id);
-    });
-    this.registeredChannels.push(IPC_CHANNELS.NOTIFICATION_CLICK);
+    };
+    ipcMain.on(IPC_CHANNELS.NOTIFICATION_CLICK, clickHandler);
+    this.boundHandlers.push({ channel: IPC_CHANNELS.NOTIFICATION_CLICK, handler: clickHandler });
 
-    ipcMain.on(IPC_CHANNELS.NOTIFICATION_READY, (_evt, id: unknown) => {
+    const readyHandler = (_evt: unknown, id: unknown): void => {
       if (typeof id !== 'string') return;
       handlers.onReady(id);
-    });
-    this.registeredChannels.push(IPC_CHANNELS.NOTIFICATION_READY);
+    };
+    ipcMain.on(IPC_CHANNELS.NOTIFICATION_READY, readyHandler);
+    this.boundHandlers.push({ channel: IPC_CHANNELS.NOTIFICATION_READY, handler: readyHandler });
 
     this.registered = true;
   }
 
   public unregister(): void {
-    for (const ch of this.registeredChannels) {
-      ipcMain.removeAllListeners(ch);
+    for (const { channel, handler } of this.boundHandlers) {
+      ipcMain.removeListener(channel, handler);
     }
-    this.registeredChannels.length = 0;
+    this.boundHandlers.length = 0;
     this.registered = false;
   }
 

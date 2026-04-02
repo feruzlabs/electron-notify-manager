@@ -2,7 +2,7 @@ jest.mock('electron', () => {
   return {
     ipcMain: {
       on: jest.fn(),
-      removeAllListeners: jest.fn(),
+      removeListener: jest.fn(),
     },
   };
 });
@@ -57,9 +57,7 @@ describe('IpcBridge', () => {
       onReady: jest.fn(),
     });
     b.unregister();
-    expect(ipcMain.removeAllListeners).toHaveBeenCalledWith(IPC_CHANNELS.NOTIFICATION_CLOSE);
-    expect(ipcMain.removeAllListeners).toHaveBeenCalledWith(IPC_CHANNELS.NOTIFICATION_CLICK);
-    expect(ipcMain.removeAllListeners).toHaveBeenCalledWith(IPC_CHANNELS.NOTIFICATION_READY);
+    expect(ipcMain.removeListener).toHaveBeenCalledTimes(3);
   });
 
   it('isRegistered returns true after register', () => {

@@ -1,3 +1,48 @@
+jest.mock('electron', () => {
+  class BrowserWindowMock {
+    public destroyed = false;
+    public webContents = { send: jest.fn() };
+    public constructor(_opts: unknown) {}
+    public isDestroyed(): boolean {
+      return this.destroyed;
+    }
+    public destroy(): void {
+      this.destroyed = true;
+    }
+    public showInactive(): void {
+      return;
+    }
+    public once(_event: string, cb: () => void): void {
+      // simulate ready-to-show immediately
+      cb();
+    }
+    public setVisibleOnAllWorkspaces(): void {
+      return;
+    }
+    public setAlwaysOnTop(): void {
+      return;
+    }
+    public loadURL(): void {
+      return;
+    }
+  }
+  return {
+    BrowserWindow: BrowserWindowMock,
+    ipcMain: {
+      on: jest.fn(),
+      removeListener: jest.fn(),
+    },
+    nativeTheme: {
+      shouldUseDarkColors: false,
+      on: jest.fn(),
+      off: jest.fn(),
+    },
+    screen: {
+      getPrimaryDisplay: () => ({ workAreaSize: { width: 1920, height: 1080 } }),
+    },
+  };
+});
+
 import type { BrowserWindow } from 'electron';
 import { DEFAULTS } from '../../src/constants';
 import { ErrorCode, NotificationError } from '../../src/errors';
@@ -186,17 +231,20 @@ describe('NotificationManager', () => {
   });
 
   it('emits close event with reason when closed', async () => {
+    jest.useFakeTimers();
     const m = new NotificationManager({});
     const spy = jest.fn();
     m.on('close', spy);
     const id = m.show({ title: 'T', description: 'D', duration: 0 });
     await Promise.resolve();
     m.close(id);
+    jest.runOnlyPendingTimers();
     await Promise.resolve();
     expect(spy).toHaveBeenCalled();
     const [calledId, reason] = spy.mock.calls[0] as [string, CloseReason];
     expect(calledId).toBe(id);
     expect(reason).toBe('programmatic');
+    jest.useRealTimers();
   });
 
   it('emits error event on invalid options', () => {

@@ -2,7 +2,7 @@ import path from 'path';
 import { app, BrowserWindow, ipcMain } from 'electron';
 
 import { NotificationManager } from 'electron-notify-manager';
-import type { CloseReason, NotificationPosition, ThemeMode } from 'electron-notify-manager/dist/types';
+import type { CloseReason, NotificationPosition, ThemeMode } from 'electron-notify-manager';
 
 type LogType = 'shown' | 'closed' | 'updated' | 'click' | 'error';
 

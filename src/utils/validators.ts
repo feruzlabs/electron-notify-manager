@@ -1,4 +1,4 @@
-import { DEFAULTS, VALID_POSITIONS, VALID_VARIANTS } from '../constants';
+import { DEFAULTS, VALID_POSITIONS, VALID_THEME_MODES, VALID_VARIANTS } from '../constants';
 import { ErrorCode, NotificationError } from '../errors';
 import type {
   NotificationManagerOptions,
@@ -6,6 +6,7 @@ import type {
   NotificationPosition,
   NotificationVariant,
 } from '../types/index';
+import type { ThemeMode } from '../types/theme.types';
 
 export function isValidPosition(value: unknown): value is NotificationPosition {
   return typeof value === 'string' && (VALID_POSITIONS as readonly string[]).includes(value);
@@ -19,14 +20,25 @@ export function isValidDuration(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0;
 }
 
+export function isValidThemeMode(value: unknown): value is ThemeMode {
+  return typeof value === 'string' && (VALID_THEME_MODES as readonly string[]).includes(value);
+}
+
 function assertFiniteNumber(name: string, value: unknown): asserts value is number {
   if (typeof value !== 'number' || !Number.isFinite(value)) {
     throw new NotificationError(`${name} must be a finite number`, ErrorCode.INVALID_OPTIONS);
   }
 }
 
+function assertInteger(name: string, value: number): void {
+  if (!Number.isInteger(value)) {
+    throw new NotificationError(`${name} must be an integer`, ErrorCode.INVALID_OPTIONS);
+  }
+}
+
 function assertNonNegativeNumber(name: string, value: unknown): void {
   assertFiniteNumber(name, value);
+  assertInteger(name, value);
   if (value < 0) {
     throw new NotificationError(`${name} must be >= 0`, ErrorCode.INVALID_OPTIONS);
   }
@@ -34,6 +46,7 @@ function assertNonNegativeNumber(name: string, value: unknown): void {
 
 function assertPositiveNumber(name: string, value: unknown): void {
   assertFiniteNumber(name, value);
+  assertInteger(name, value);
   if (value <= 0) throw new NotificationError(`${name} must be > 0`, ErrorCode.INVALID_OPTIONS);
 }
 
@@ -73,6 +86,7 @@ export function validateNotificationOptions(options: unknown): asserts options i
   }
   if (o.duration !== undefined) {
     assertFiniteNumber('duration', o.duration);
+    assertInteger('duration', o.duration);
     if (o.duration < 0) {
       throw new NotificationError('duration must be >= 0', ErrorCode.INVALID_OPTIONS);
     }
@@ -82,6 +96,9 @@ export function validateNotificationOptions(options: unknown): asserts options i
   }
   if (o.variant !== undefined && !isValidVariant(o.variant)) {
     throw new NotificationError(`variant is invalid: ${String(o.variant)}`, ErrorCode.INVALID_OPTIONS);
+  }
+  if (o.theme !== undefined && !isValidThemeMode(o.theme)) {
+    throw new NotificationError(`theme is invalid: ${String(o.theme)}`, ErrorCode.INVALID_OPTIONS);
   }
   if (o.image !== undefined && (typeof o.image !== 'string' || o.image.trim().length === 0)) {
     throw new NotificationError('image must be a non-empty string if provided', ErrorCode.INVALID_OPTIONS);

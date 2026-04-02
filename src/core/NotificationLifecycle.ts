@@ -48,11 +48,15 @@ export class NotificationLifecycle extends EventEmitter {
     private readonly ipcBridge: IIpcBridge,
     private readonly logger: Logger,
     private readonly position: import('../types').NotificationPosition,
-    private readonly positionConfig: PositionConfig,
+    private positionConfig: PositionConfig,
   ) {
     super();
     this.windows = new Map<string, INotificationWindow>();
     this.calculator = new PositionCalculator();
+  }
+
+  public updatePositionConfig(config: Partial<PositionConfig>): void {
+    Object.assign(this.positionConfig, config);
   }
 
   public async show(options: NotificationOptions): Promise<string> {
@@ -82,13 +86,15 @@ export class NotificationLifecycle extends EventEmitter {
     // idempotent: hide might be called twice (e.g. programmatic force-close + renderer notifyClose)
     if (!this.queue.has(id)) return;
 
-    // 2. Remove from queue and position manager
-    this.queue.remove(id);
+    // Save callback BEFORE remove
+    const removed = this.queue.remove(id);
+    const savedOnClose = removed?.options.onClose;
     this.positionManager.remove(id);
 
     // 3. Destroy window
     const win = this.windows.get(id);
     if (win) {
+      this.emit('hidden', id, reason);
       // If reason is NOT 'duration' the renderer isn't already animating out.
       // Ask renderer to play exit animation first.
       if (reason !== 'duration') {
@@ -109,7 +115,7 @@ export class NotificationLifecycle extends EventEmitter {
     this.reflow();
 
     // 5. Emit close event
-    this.emit('close', id, reason);
+    this.emit('close', id, reason, savedOnClose);
   }
 
   public destroy(id: string): void {
@@ -157,6 +163,7 @@ export class NotificationLifecycle extends EventEmitter {
     const win = this.windowFactory.create(item.id, item.options, coords);
     this.windows.set(item.id, win);
 
+    this.emit('shown', item.id);
     this.emit('show', item.id);
   }
 
@@ -169,6 +176,7 @@ export class NotificationLifecycle extends EventEmitter {
       if (!win) continue;
       const coords = this.calculator.getCoords(this.position, i, this.positionConfig);
       win.send(IPC_CHANNELS.NOTIFICATION_REPOSITION, { id, y: coords.y });
+      this.emit('reposition', id, coords.x, coords.y);
     }
   }
 
@@ -187,6 +195,8 @@ export class NotificationLifecycle extends EventEmitter {
         this.reflowPositionsOnly();
       }
     }
+
+    this.emit('reflow:done', visible.length);
   }
 
   // Timers are renderer-owned; main no longer manages duration timers.

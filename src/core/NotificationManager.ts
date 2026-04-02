@@ -25,6 +25,7 @@ export class NotificationManager extends EventEmitter {
   private readonly positionManager: PositionManager;
   private readonly logger: Logger;
   private readonly ipcBridge: IpcBridge;
+  private readonly resolvedOptions: { width: number; height: number; margin: number; gap: number };
   private isDestroyed = false;
 
   public constructor(options: NotificationManagerOptions = {}) {
@@ -39,23 +40,31 @@ export class NotificationManager extends EventEmitter {
     this.queue = new NotificationQueue(maxVisible);
     this.positionManager = new PositionManager();
 
-    const display = screen.getPrimaryDisplay();
-    const { width: screenWidth, height: screenHeight } = display.workAreaSize;
-
-    const resolvedOptions = {
+    this.resolvedOptions = {
       width: options.width ?? DEFAULTS.WIDTH,
       height: options.height ?? DEFAULTS.HEIGHT,
       margin: options.margin ?? DEFAULTS.MARGIN,
       gap: options.gap ?? DEFAULTS.GAP,
     };
 
+    let screenWidth = 1920;
+    let screenHeight = 1080;
+    try {
+      const display = screen.getPrimaryDisplay();
+      const size = display.workAreaSize;
+      screenWidth = size.width;
+      screenHeight = size.height;
+    } catch {
+      // screen API not available in tests
+    }
+
     const positionConfig: PositionConfig = {
-      ...resolvedOptions,
+      ...this.resolvedOptions,
       screenWidth,
       screenHeight,
     };
 
-    const windowFactory = new WindowFactory(resolvedOptions, position, requestedTheme);
+    const windowFactory = new WindowFactory(this.resolvedOptions, position, requestedTheme);
     this.ipcBridge = new IpcBridge();
 
     this.lifecycle = new NotificationLifecycle(
@@ -86,20 +95,31 @@ export class NotificationManager extends EventEmitter {
     });
 
     this.lifecycle.on('show', (id: string) => this.emit('show', id));
-    this.lifecycle.on('close', (id: string, reason: CloseReason) => {
+    this.lifecycle.on('close', (id: string, reason: CloseReason, onClose?: () => void) => {
       this.emit('close', id, reason);
-      const item = this.queue.getAll().find((i) => i.id === id);
       try {
-        item?.options.onClose?.();
+        onClose?.();
       } catch {
         // ignore
       }
     });
     this.lifecycle.on('update', (id: string) => this.emit('update', id));
+
+    this.lifecycle.on('shown', (id: string) => this.emit('shown', id));
+    this.lifecycle.on('hidden', (id: string, reason: CloseReason) => this.emit('hidden', id, reason));
+    this.lifecycle.on('reposition', (id: string, x: number, y: number) => this.emit('reposition', id, x, y));
+    this.lifecycle.on('reflow:done', (count: number) => this.emit('reflow:done', count));
   }
 
   public show(options: NotificationOptions): string {
     this.assertNotDestroyed();
+    try {
+      const display = screen.getPrimaryDisplay();
+      const { width, height } = display.workAreaSize;
+      this.lifecycle.updatePositionConfig({ screenWidth: width, screenHeight: height });
+    } catch {
+      // ignore
+    }
     try {
       validateNotificationOptions(options);
     } catch (e: unknown) {
@@ -151,9 +171,13 @@ export class NotificationManager extends EventEmitter {
 
   // Typed EventEmitter overloads
   public override emit(event: 'show', id: string): boolean;
+  public override emit(event: 'shown', id: string): boolean;
+  public override emit(event: 'hidden', id: string, reason: CloseReason): boolean;
   public override emit(event: 'close', id: string, reason: CloseReason): boolean;
   public override emit(event: 'click', id: string): boolean;
   public override emit(event: 'update', id: string): boolean;
+  public override emit(event: 'reposition', id: string, x: number, y: number): boolean;
+  public override emit(event: 'reflow:done', count: number): boolean;
   public override emit(event: 'error', error: NotificationError): boolean;
   public override emit(event: string, ...args: unknown[]): boolean;
   public override emit(event: string, ...args: unknown[]): boolean {
@@ -161,9 +185,13 @@ export class NotificationManager extends EventEmitter {
   }
 
   public override on(event: 'show', listener: (id: string) => void): this;
+  public override on(event: 'shown', listener: (id: string) => void): this;
+  public override on(event: 'hidden', listener: (id: string, reason: CloseReason) => void): this;
   public override on(event: 'close', listener: (id: string, reason: CloseReason) => void): this;
   public override on(event: 'click', listener: (id: string) => void): this;
   public override on(event: 'update', listener: (id: string) => void): this;
+  public override on(event: 'reposition', listener: (id: string, x: number, y: number) => void): this;
+  public override on(event: 'reflow:done', listener: (count: number) => void): this;
   public override on(event: 'error', listener: (error: NotificationError) => void): this;
   public override on(event: string, listener: (...args: any[]) => void): this;
   public override on(event: string, listener: (...args: any[]) => void): this {

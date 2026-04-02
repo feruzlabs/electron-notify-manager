@@ -16,7 +16,22 @@ export class NotificationError extends Error {
   }
 }
 
-export class WindowCreationError extends NotificationError {}
-export class PositionCalculationError extends NotificationError {}
-export class IpcRegistrationError extends NotificationError {}
+export class WindowCreationError extends NotificationError {
+  public constructor(message: string, code: ErrorCode = ErrorCode.WINDOW_CREATION_FAILED) {
+    super(message, code);
+    this.name = 'WindowCreationError';
+  }
+}
+export class PositionCalculationError extends NotificationError {
+  public constructor(message: string, code: ErrorCode = ErrorCode.POSITION_CALCULATION_FAILED) {
+    super(message, code);
+    this.name = 'PositionCalculationError';
+  }
+}
+export class IpcRegistrationError extends NotificationError {
+  public constructor(message: string, code: ErrorCode = ErrorCode.IPC_NOT_REGISTERED) {
+    super(message, code);
+    this.name = 'IpcRegistrationError';
+  }
+}
 
