@@ -10,12 +10,20 @@
     "clean": "rimraf dist",
     "test": "jest",
     "test:coverage": "jest --coverage",
-    "prepublish": "npm run clean && npm run build"
+    "prepublishOnly": "npm run clean && npm run build"
   },
   "files": [
     "dist/",
     "renderer/"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/feruzlabs/electron-notify-manager"
+  },
+  "bugs": {
+    "url": "https://github.com/feruzlabs/electron-notify-manager/issues"
+  },
+  "homepage": "https://github.com/feruzlabs/electron-notify-manager#readme",
   "keywords": [
     "electron",
     "notification",
@@ -38,13 +46,5 @@
   "peerDependencies": {
     "electron": ">=13.0.0"
   },
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://example.invalid/electron-notify-manager"
-  },
-  "bugs": {
-    "url": "https://example.invalid/electron-notify-manager/issues"
-  },
-  "homepage": "https://example.invalid/electron-notify-manager#readme"
+  "license": "MIT"
 }
